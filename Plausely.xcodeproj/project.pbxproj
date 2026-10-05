@@ -1,0 +1,359 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F60040 /* PlauselyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60010 /* PlauselyApp.swift */; };
+		A1B2C3D4E5F60042 /* DashboardUI in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60018 /* DashboardUI */; };
+		A1B2C3D4E5F60043 /* PlauselyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60012 /* PlauselyApp.swift */; };
+		A1B2C3D4E5F60044 /* PlauselyCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60013 /* PlauselyCommands.swift */; };
+		A1B2C3D4E5F60046 /* DashboardUI in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60018 /* DashboardUI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A1B2C3D4E5F60010 /* PlauselyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyApp.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F60012 /* PlauselyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyApp.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60013 /* PlauselyCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyCommands.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60014 /* Plausely.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Plausely.entitlements; sourceTree = "<group>"; };
+		A1B2C3D4E5F60015 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60016 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1B2C3D4E5F60032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60042 /* DashboardUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F60034 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60046 /* DashboardUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1B2C3D4E5F60001 = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60002 /* Apps */,
+				A1B2C3D4E5F60005 /* Products */,
+				A1B2C3D4E5F60006 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60002 /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60003 /* iOS */,
+				A1B2C3D4E5F60004 /* macOS */,
+			);
+			path = Apps;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60003 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60010 /* PlauselyApp.swift */,
+				A1B2C3D4E5F60011 /* Info.plist */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60004 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60012 /* PlauselyApp.swift */,
+				A1B2C3D4E5F60013 /* PlauselyCommands.swift */,
+				A1B2C3D4E5F60014 /* Plausely.entitlements */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60005 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60015 /* Plausely.app */,
+				A1B2C3D4E5F60016 /* Plausely.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60006 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1B2C3D4E5F60020 /* Plausely-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F60051 /* Build configuration list for PBXNativeTarget "Plausely-iOS" */;
+			buildPhases = (
+				A1B2C3D4E5F60031 /* Sources */,
+				A1B2C3D4E5F60032 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F60047 /* PBXTargetDependency */,
+			);
+			name = Plausely-iOS;
+			packageProductDependencies = (
+				A1B2C3D4E5F60018 /* DashboardUI */,
+			);
+			productName = Plausely;
+			productReference = A1B2C3D4E5F60015 /* Plausely.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A1B2C3D4E5F60021 /* Plausely-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F60052 /* Build configuration list for PBXNativeTarget "Plausely-macOS" */;
+			buildPhases = (
+				A1B2C3D4E5F60033 /* Sources */,
+				A1B2C3D4E5F60034 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F60048 /* PBXTargetDependency */,
+			);
+			name = Plausely-macOS;
+			packageProductDependencies = (
+				A1B2C3D4E5F60018 /* DashboardUI */,
+			);
+			productName = Plausely;
+			productReference = A1B2C3D4E5F60016 /* Plausely.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1B2C3D4E5F60030 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+			};
+			buildConfigurationList = A1B2C3D4E5F60050 /* Build configuration list for PBXProject "Plausely" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = A1B2C3D4E5F60001;
+			packageReferences = (
+				A1B2C3D4E5F60017 /* XCRemoteSwiftPackageReference "PlauselyKit" */,
+			);
+			productRefGroup = A1B2C3D4E5F60005 /* Products */;
+			projectDirPath = "";
+			targets = (
+				A1B2C3D4E5F60020 /* Plausely-iOS */,
+				A1B2C3D4E5F60021 /* Plausely-macOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1B2C3D4E5F60031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60040 /* PlauselyApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F60033 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60043 /* PlauselyApp.swift in Sources */,
+				A1B2C3D4E5F60044 /* PlauselyCommands.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1B2C3D4E5F60047 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = A1B2C3D4E5F60018 /* DashboardUI */;
+		};
+		A1B2C3D4E5F60048 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = A1B2C3D4E5F60018 /* DashboardUI */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A1B2C3D4E5F60053 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F60054 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		A1B2C3D4E5F60055 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F60056 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A1B2C3D4E5F60057 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/macOS/Plausely.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F60058 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/macOS/Plausely.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1B2C3D4E5F60050 /* Build configuration list for PBXProject "Plausely" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F60053 /* Debug */,
+				A1B2C3D4E5F60054 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F60051 /* Build configuration list for PBXNativeTarget "Plausely-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F60055 /* Debug */,
+				A1B2C3D4E5F60056 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F60052 /* Build configuration list for PBXNativeTarget "Plausely-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F60057 /* Debug */,
+				A1B2C3D4E5F60058 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A1B2C3D4E5F60017 /* XCRemoteSwiftPackageReference "PlauselyKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PlauselyKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F60018 /* DashboardUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DashboardUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A1B2C3D4E5F60030 /* Project object */;
+}
