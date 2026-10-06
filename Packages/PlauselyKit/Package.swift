@@ -31,7 +31,8 @@ let package = Package(
         ),
         .testTarget(
             name: "PlausibleClientTests",
-            dependencies: ["PlausibleClient"]
+            dependencies: ["PlausibleClient"],
+            resources: [.copy("Fixtures")]
         ),
     ]
 )
