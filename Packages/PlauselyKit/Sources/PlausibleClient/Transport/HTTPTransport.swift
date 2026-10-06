@@ -3,7 +3,14 @@ import Foundation
 /// Injected transport seam. Production uses `URLSessionTransport`;
 /// tests inject fakes. Cancellation flows through Swift concurrency.
 public protocol HTTPTransport: Sendable {
-    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
+    func send(_ request: URLRequest, expecting: ContentKind) async throws -> (Data, HTTPURLResponse)
+}
+
+extension HTTPTransport {
+    /// JSON-contract shorthand.
+    public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await send(request, expecting: .json)
+    }
 }
 
 /// Retry policy. Only idempotent reads retry, finitely, honoring Retry-After.
@@ -43,7 +50,7 @@ public final class URLSessionTransport: NSObject, HTTPTransport, Sendable {
         // Retain guard via session's strong delegate reference.
     }
 
-    public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    public func send(_ request: URLRequest, expecting: ContentKind = .json) async throws -> (Data, HTTPURLResponse) {
         var attempt = 0
         while true {
             do {
@@ -52,7 +59,7 @@ public final class URLSessionTransport: NSObject, HTTPTransport, Sendable {
                 guard let http = response as? HTTPURLResponse else {
                     throw ClientError.serverError(status: -1)
                 }
-                if let mapped = ErrorMapper.map(data: data, response: http) {
+                if let mapped = ErrorMapper.map(data: data, response: http, expecting: expecting) {
                     throw mapped
                 }
                 return (data, http)

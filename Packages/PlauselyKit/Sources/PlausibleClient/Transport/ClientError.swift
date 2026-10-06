@@ -37,8 +37,17 @@ public enum ClientError: Error, Equatable {
 /// Maps HTTP responses to `ClientError` using the verified manifest.
 /// Bodies follow the server's `{error, error_code}` shape; unknown required
 /// content becomes `.serverError`, never a success-looking empty result.
+/// The HTML-login heuristic applies only to JSON-contract calls: dashboard
+/// HTML pages legitimately return 200 text/html and must pass through.
+/// Expected body contract for a request. JSON-contract calls treat an HTML
+/// login page (HTTP 200) as logged-out; dashboard HTML pages pass through.
+public enum ContentKind: Sendable {
+    case json
+    case html
+}
+
 public enum ErrorMapper {
-    public static func map(data: Data, response: HTTPURLResponse) -> ClientError? {
+    public static func map(data: Data, response: HTTPURLResponse, expecting: ContentKind = .json) -> ClientError? {
         if response.statusCode == 429 {
             let retryAfter = response.value(forHTTPHeaderField: "Retry-After").flatMap(Int.init)
             return .rateLimited(retryAfter: retryAfter)
@@ -55,7 +64,7 @@ public enum ErrorMapper {
             default: return .serverError(status: response.statusCode)
             }
         }
-        if isHTMLLogin(data: data, response: response) {
+        if expecting == .json, isHTMLLogin(data: data, response: response) {
             return .loginRequired
         }
         return nil

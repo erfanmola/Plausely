@@ -30,6 +30,7 @@ struct TransportTests {
         let json = Data(#"{"top_stats":[]}"#.utf8)
         #expect(ErrorMapper.map(data: html, response: response(status: 200, headers: ["Content-Type": "text/html"])) == .loginRequired)
         #expect(ErrorMapper.map(data: json, response: response(status: 200, headers: ["Content-Type": "application/json"])) == nil)
+        #expect(ErrorMapper.map(data: html, response: response(status: 200, headers: ["Content-Type": "text/html"]), expecting: .html) == nil)
     }
 
     @Test("only idempotent failures retry, finitely")

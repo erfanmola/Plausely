@@ -36,7 +36,7 @@ private struct FakeCredentialStore: CredentialStore {
 private struct FakeTransport: HTTPTransport {
     final class Box: @unchecked Sendable { var requests: [URLRequest] = [] }
     let box = Box()
-    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    func send(_ request: URLRequest, expecting: ContentKind = .json) async throws -> (Data, HTTPURLResponse) {
         box.requests.append(request)
         let response = HTTPURLResponse(url: request.url!, statusCode: 302, httpVersion: nil, headerFields: nil)!
         return (Data(), response)
