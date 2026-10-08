@@ -34,6 +34,9 @@ final class SiteShellTests: XCTestCase {
 
     override func setUp() {
         continueAfterFailure = false
+    }
+
+    private func launch() {
         app = XCUIApplication()
         app.launchArguments.append("-plausely-mock-sites")
         app.launch()
@@ -44,6 +47,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testSiteSelectionDetailAndBack() throws {
+        launch()
         XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
         // Long domain renders (truncation never drops the row)…
         let longDomain = "extremely-long-subdomain-name-for-truncation-testing-purposes.example.com"
@@ -66,6 +70,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testInstanceSwitchChangesSites() throws {
+        launch()
         XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
         XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
         // The instance menu is a native menu button titled by the account.
@@ -101,6 +106,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testQueryToolbarPeriodsAndComparison() throws {
+        launch()
         openDetail()
         // Period presets rewrite the query; the menu label tracks state.
         element("Last 28 days").tap()
@@ -125,6 +131,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testFilterAddSuggestAndRemove() throws {
+        launch()
         openDetail()
         reveal("filter-add").tap()
         let valueField = element("clause-value")
@@ -144,6 +151,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testSegmentApplyAndRemove() throws {
+        launch()
         openDetail()
         XCTAssertTrue(reveal("segment-apply-7").waitForExistence(timeout: 15))
         element("segment-apply-7").tap()
@@ -154,6 +162,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testBreakdownSummaryToDetail() throws {
+        launch()
         openDetail()
         // Sources summary with show-all.
         XCTAssertTrue(reveal("breakdown-sources-summary-0").waitForExistence(timeout: 15))
@@ -206,6 +215,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testChannelsDrillToFilteredSources() throws {
+        launch()
         openDetail()
         XCTAssertTrue(reveal("breakdown-channels-summary-0").waitForExistence(timeout: 15))
         reveal("breakdown-channels-show-all").tap()
@@ -234,6 +244,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testUtmHubToFilter() throws {
+        launch()
         openDetail()
         // UTM hub entry opens the family list sheet.
         XCTAssertTrue(reveal("breakdown-utm-hub").waitForExistence(timeout: 15))
@@ -271,6 +282,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testPagesFilterAndOpen() throws {
+        launch()
         openDetail()
         // Pages summary with show-all.
         XCTAssertTrue(reveal("breakdown-pages-summary-0").waitForExistence(timeout: 15))
@@ -314,6 +326,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testEntryAndExitFilterFlows() throws {
+        launch()
         openDetail()
         // Entry pages: summary with show-all, full report, leaf detail,
         // filter application closes the sheet (mirrors the pages flow).
@@ -365,6 +378,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testComparisonBadgesAcrossWorkflows() throws {
+        launch()
         openDetail()
         // Previous-period comparison retargets every breakdown with
         // previous values and server deltas.
@@ -400,6 +414,7 @@ final class SiteShellTests: XCTestCase {
     }
 
     func testOverviewCardsAndMetricSwitch() throws {
+        launch()
         openDetail()
         // Headline cards render the mock top-stats aggregates in order.
         XCTAssertTrue(reveal("overview-stat-visitors").waitForExistence(timeout: 15))
