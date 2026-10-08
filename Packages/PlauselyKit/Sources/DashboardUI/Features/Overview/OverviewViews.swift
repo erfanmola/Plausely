@@ -1,0 +1,332 @@
+import AnalyticsCore
+import Charts
+import SwiftUI
+
+/// Deterministic overview/series loaders for UI tests and previews. Numbers
+/// mirror the CE 3.2.1 fixture `top-stats.day.json` exactly (1600/1600/1400/
+/// 0.88/88%/0s); production loaders arrive with the client-wiring follow-on.
+public enum MockOverviewProviders {
+    public static var overview: ReportModel<Overview>.Loader {
+        { query, today in
+            let stats = [
+                TopStat(metric: .visitors, name: "Unique visitors", value: .count(1600)),
+                TopStat(metric: .visits, name: "Total visits", value: .count(1600)),
+                TopStat(metric: .pageviews, name: "Total pageviews", value: .count(1400)),
+                TopStat(metric: .viewsPerVisit, name: "Views per visit", value: .decimal(Decimal(string: "0.88")!)),
+                TopStat(metric: .bounceRate, name: "Bounce rate", value: .count(88)),
+                TopStat(metric: .visitDuration, name: "Visit duration", value: .count(0)),
+            ]
+            let id = try QueryID.compute(for: query, today: today)
+            return ReportEnvelope(queryID: id, value: Overview(stats: stats), retrievedAt: today)
+        }
+    }
+
+    public static var series: ReportModel<TimeSeries>.Loader {
+        { query, today in
+            let labels = ["00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"]
+            let base: Int64
+            switch query.selectedMetric {
+            case .visitors: base = 12
+            case .visits: base = 14
+            case .pageviews: base = 20
+            case .viewsPerVisit: base = 1
+            case .bounceRate: base = 80
+            case .visitDuration: base = 30
+            default: base = 5
+            }
+            let comparison: [MetricValue?]? =
+                query.comparison == .off
+                ? nil
+                : labels.indices.map { .count(base * Int64($0) + 3) }
+            let id = try QueryID.compute(for: query, today: today)
+            return ReportEnvelope(
+                queryID: id,
+                value: TimeSeries(
+                    metric: query.selectedMetric,
+                    labels: labels,
+                    plot: labels.indices.map { index in
+                        index == 2 ? nil : .count(base * Int64(index + 1))
+                    },
+                    comparisonPlot: comparison
+                ),
+                retrievedAt: today
+            )
+        }
+    }
+}
+
+/// Overview section: headline cards plus the selectable-metric series chart.
+/// Loads through the model's independent lifecycles; every state (loading,
+/// stale, error with retry, empty) renders through the shared ReportStateView.
+public struct OverviewContentView: View {
+    private let query: DashboardQuery
+    @Bindable private var model: OverviewModel
+
+    public init(query: DashboardQuery, model: OverviewModel) {
+        self.query = query
+        self.model = model
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ReportStateView(state: model.dashboard.overview.state, onRetry: {
+                Task { await model.refresh() }
+            }, content: {
+                TopStatsGrid(overview: $0.value, warnings: $0.warnings)
+            })
+            MetricPickerView(model: model)
+            ReportStateView(state: model.dashboard.series.state, onRetry: {
+                Task { await model.refresh() }
+            }, content: {
+                SeriesChartView(series: $0.value, metric: model.selectedMetric)
+            })
+        }
+        .task(id: query) {
+            await model.reload(query: query)
+        }
+    }
+}
+
+/// Headline cards in dashboard order. Values render server aggregates only;
+/// no client-side math exists on this path by construction.
+public struct TopStatsGrid: View {
+    private let overview: Overview
+    private let warnings: [ReportWarning]
+    private let formatter = MetricFormatter()
+
+    public init(overview: Overview, warnings: [ReportWarning] = []) {
+        self.overview = overview
+        self.warnings = warnings
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !warnings.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(warnings.enumerated()), id: \.offset) { index, warning in
+                        Label(warning.message, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityIdentifier("overview-warning-\(index)")
+                    }
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 8) {
+                ForEach(overview.stats, id: \.metric) { stat in
+                    statCard(stat)
+                }
+            }
+        }
+    }
+
+    private func statCard(_ stat: TopStat) -> some View {
+        HStack(spacing: 10) {
+            MetricTile(metric: stat.metric)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stat.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(formatter.string(for: stat.value, as: stat.metric))
+                    .font(.title3)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: stat.value)
+                    .accessibilityIdentifier("overview-value-\(stat.metric.rawValue)")
+                if let change = changeText(stat.change) {
+                    Text(change)
+                        .font(.caption)
+                        .foregroundStyle(changeDirectionColor(stat.change))
+                        .accessibilityIdentifier("overview-change-\(stat.metric.rawValue)")
+                }
+                if let comparison = stat.comparisonValue {
+                    Text("vs \(formatter.string(for: comparison, as: stat.metric))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("overview-comparison-\(stat.metric.rawValue)")
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(statAccessibilityLabel(stat))
+        .accessibilityIdentifier("overview-stat-\(stat.metric.rawValue)")
+    }
+
+    private func statAccessibilityLabel(_ stat: TopStat) -> String {
+        var parts = [formatter.accessibleLabel(for: stat.value, as: stat.metric)]
+        if let change = changeText(stat.change) { parts.append(change) }
+        if let comparison = stat.comparisonValue {
+            parts.append("comparison \(formatter.string(for: comparison, as: stat.metric))")
+        }
+        return parts.joined(separator: ", ")
+    }
+}
+
+/// Series metric picker (MET-01 traffic set). Switching reloads the series
+/// only; the overview cards keep their independent lifecycle.
+public struct MetricPickerView: View {
+    @Bindable private var model: OverviewModel
+
+    public init(model: OverviewModel) {
+        self.model = model
+    }
+
+    public var body: some View {
+        Menu {
+            ForEach(OverviewModel.chartMetrics, id: \.self) { metric in
+                Button(MetricID.descriptor(for: metric).displayName) {
+                    Task { await model.reselect(metric) }
+                }
+                .accessibilityIdentifier("metric-option-\(metric.rawValue)")
+            }
+        } label: {
+            Label(MetricID.descriptor(for: model.selectedMetric).displayName, systemImage: "chart.line.uptrend.xyaxis")
+        }
+        .accessibilityIdentifier("metric-picker")
+        .sensoryFeedback(.selection, trigger: model.selectedMetric)
+    }
+}
+
+/// Series chart with exact point inspection plus an accessible table.
+/// Every bucket plots (no downsampling); nil buckets render as gaps, never
+/// zeros. Selection shows the bucket's exact server value.
+public struct SeriesChartView: View {
+    private let series: TimeSeries
+    private let metric: MetricID
+    @State private var selection: String?
+    private let formatter = MetricFormatter()
+
+    public init(series: TimeSeries, metric: MetricID) {
+        self.series = series
+        self.metric = metric
+    }
+
+    private var points: [SeriesPoint] { SeriesPoints.build(from: series) }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Chart {
+                ForEach(primaryRuns, id: \.firstIndex) { run in
+                    ForEach(run.points, id: \.index) { point in
+                        LineMark(
+                            x: .value("Bucket", point.label),
+                            y: .value("Value", point.value!)
+                        )
+                        .interpolationMethod(.catmullRom)
+                    }
+                    .foregroundStyle(.blue)
+                    ForEach(run.points, id: \.index) { point in
+                        AreaMark(
+                            x: .value("Bucket", point.label),
+                            y: .value("Value", point.value!)
+                        )
+                        .interpolationMethod(.catmullRom)
+                    }
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.blue.opacity(0.35), .blue.opacity(0.03)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                }
+                ForEach(comparisonRuns, id: \.firstIndex) { run in
+                    ForEach(run.points, id: \.index) { point in
+                        LineMark(
+                            x: .value("Bucket", point.label),
+                            y: .value("Comparison", point.comparison!)
+                        )
+                        .interpolationMethod(.catmullRom)
+                    }
+                    .foregroundStyle(.gray)
+                    .lineStyle(StrokeStyle(dash: [4, 4]))
+                }
+                if let selection {
+                    RuleMark(x: .value("Selected", selection))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .chartXSelection(value: $selection)
+            .chartYAxis {
+                AxisMarks(preset: .aligned, position: .leading, values: .automatic(desiredCount: 4))
+            }
+            .frame(minHeight: 180)
+            .accessibilityIdentifier("series-chart")
+            .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(points.count) buckets")
+            .animation(.snappy, value: series)
+            .sensoryFeedback(.selection, trigger: selection)
+            if let detail = selectionDetail {
+                Text(detail)
+                    .font(.callout)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: detail)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .accessibilityIdentifier("series-selection")
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Data table")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("series-table")
+                ForEach(points, id: \.index) { point in
+                    HStack {
+                        Text(point.label)
+                        Spacer()
+                        Text(cellText(point))
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(point.label), \(cellText(point))")
+                }
+            }
+        }
+    }
+
+    private var primaryRuns: [PointRun] {
+        runs(value: \.value).map { PointRun(points: $0, kind: .primary) }
+    }
+
+    private var comparisonRuns: [PointRun] {
+        guard points.contains(where: { $0.comparison != nil }) else { return [] }
+        return runs(value: \.comparison).map { PointRun(points: $0, kind: .comparison) }
+    }
+
+    /// Contiguous non-nil runs so lines never bridge genuine gaps.
+    private func runs(value keyPath: KeyPath<SeriesPoint, Double?>) -> [[SeriesPoint]] {
+        var groups: [[SeriesPoint]] = []
+        var current: [SeriesPoint] = []
+        for point in points {
+            if point[keyPath: keyPath] != nil {
+                current.append(point)
+            } else if !current.isEmpty {
+                groups.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { groups.append(current) }
+        return groups
+    }
+
+    private var selectionDetail: String? {
+        guard let selection,
+              let point = points.first(where: { $0.label == selection })
+        else { return nil }
+        var text = "\(point.label): \(cellText(point))"
+        if let rawComparison = point.rawComparison {
+            text += " (comparison \(formatter.string(for: rawComparison, as: metric)))"
+        }
+        return text
+    }
+
+    private func cellText(_ point: SeriesPoint) -> String {
+        guard let raw = point.rawValue else { return "no data" }
+        return formatter.string(for: raw, as: metric)
+    }
+}
+
+private enum RunKind { case primary, comparison }
+
+private struct PointRun {
+    let points: [SeriesPoint]
+    let kind: RunKind
+    var firstIndex: Int { points.first?.index ?? -1 }
+}
