@@ -1,6 +1,7 @@
 import XCTest
 
 /// Bootstrap smoke test: the app launches into its deterministic mock root.
+@MainActor
 final class SmokeTests: XCTestCase {
     func testMockLaunch() throws {
         let app = XCUIApplication()
@@ -27,6 +28,7 @@ final class SmokeTests: XCTestCase {
 
 /// Site shell against the deterministic 13-site mock directory: sidebar
 /// selection, long names, detail/back, and instance switching.
+@MainActor
 final class SiteShellTests: XCTestCase {
     private var app: XCUIApplication!
 

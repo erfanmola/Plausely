@@ -1,6 +1,7 @@
 import XCTest
 
 /// Bootstrap smoke test: the app launches into its deterministic mock root.
+@MainActor
 final class SmokeTests: XCTestCase {
     func testMockLaunch() throws {
         let app = XCUIApplication()
@@ -32,6 +33,7 @@ final class SmokeTests: XCTestCase {
 /// selection with simultaneously visible detail, team sections, and instance
 /// switching. Multi-window isolation is proven at the model layer
 /// (SiteSelectionTests.windowIsolation); every window owns its model.
+@MainActor
 final class SiteShellTests: XCTestCase {
     private var app: XCUIApplication!
 
