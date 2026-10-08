@@ -27,6 +27,7 @@ final class SmokeTests: XCTestCase {
 
 
 
+
 /// Site shell against the deterministic 13-site mock directory: sidebar
 /// selection, long names, detail/back, and instance switching.
 @MainActor
@@ -75,7 +76,7 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
         XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
         // The instance menu is a native menu button titled by the account.
-        menuButton("owner@example.com").tap()
+        tapMenu("owner@example.com")
         app.descendants(matching: .any)["viewer@example.com"].firstMatch.tap()
         XCTAssertTrue(element("site-row-local.example").waitForExistence(timeout: 15))
         XCTAssertFalse(element("site-row-alpha-1.example.com").waitForExistence(timeout: 5))
@@ -96,14 +97,18 @@ final class SiteShellTests: XCTestCase {
     private func reveal(_ identifier: String, timeout: TimeInterval = 15) -> XCUIElement {
         let target = element(identifier)
         let deadline = Date().addingTimeInterval(timeout)
+        // One screen per beat: momentum swipes leapfrog tall sections, so
+        // settle between swipes and let cells materialize before polling.
         while !target.exists, Date() < deadline {
             app.swipeUp()
+            sleep(1)
         }
         // Cells rendered at the bottom edge (home-indicator zone) exist but
         // never receive taps until scrolled fully on-screen.
         let hittableDeadline = Date().addingTimeInterval(5)
         while target.exists, !target.isHittable, Date() < hittableDeadline {
             app.swipeUp()
+            sleep(1)
         }
         return target
     }
@@ -254,6 +259,13 @@ final class SiteShellTests: XCTestCase {
         return button
     }
 
+    /// Menu taps bypass the AX scroll action (coordinate tap), which flakes
+    /// on visible menus when the harness thinks scrolling is needed.
+    private func tapMenu(_ title: String, timeout: TimeInterval = 15) {
+        let button = menuButton(title, timeout: timeout)
+        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
     func testUtmHubToFilter() throws {
         launch()
         openDetail()
@@ -393,7 +405,7 @@ final class SiteShellTests: XCTestCase {
         openDetail()
         // Previous-period comparison retargets every breakdown with
         // previous values and server deltas.
-        menuButton("No comparison").tap()
+        tapMenu("No comparison")
         menuOption("Previous period").tap()
         XCTAssertTrue(element("Previous period").waitForExistence(timeout: 15))
         // Compact summaries gain change badges on the primary column.
@@ -433,7 +445,7 @@ final class SiteShellTests: XCTestCase {
         // The chart inherits its ancestor id, so match its stable voice label.
         XCTAssertTrue(element("Unique visitors chart, 8 buckets").waitForExistence(timeout: 15))
         // Switching the chart metric reloads the series with its own identity.
-        menuButton("Unique visitors").tap()
+        tapMenu("Unique visitors")
         menuOption("Total visits").tap()
         XCTAssertTrue(element("Total visits chart, 8 buckets").waitForExistence(timeout: 15))
         // The accessible table lists one row per bucket with exact values;
