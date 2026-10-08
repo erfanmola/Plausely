@@ -664,9 +664,10 @@ public struct BreakdownSummaryView: View {
 
 /// Shared wiring types: child-report factory (drill target + current query
 /// to a fresh model, merging any hierarchy filter) and row-filter action
-/// (clause to the query model, true when accepted).
-public typealias BreakdownChildFactory = @Sendable (DrillTarget, DashboardQuery) -> BreakdownModel
-public typealias BreakdownFilterAction = @Sendable (FilterClause) -> Bool
+/// (clause to the query model, true when accepted). Both run on the main
+/// actor: factories build MainActor models and actions mutate them.
+public typealias BreakdownChildFactory = @MainActor @Sendable (DrillTarget, DashboardQuery) -> BreakdownModel
+public typealias BreakdownFilterAction = @MainActor @Sendable (FilterClause) -> Bool
 
 /// Shared navigation destinations for every breakdown stack (sheet roots
 /// and hub lists alike): drill children and row details resolve in exactly
