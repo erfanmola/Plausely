@@ -98,6 +98,9 @@ public struct TimeSeries: Equatable, Sendable {
 public struct BreakdownRow: Hashable, Sendable {
     public let name: String
     public let code: String?
+    /// Dashboard flag emoji for geo rows (nil elsewhere). Decorative:
+    /// views hide it from VoiceOver; the name carries the meaning.
+    public let flag: String?
     public let metrics: [MetricID: MetricValue]
     public let comparison: [MetricID: MetricValue]?
     public let change: [MetricID: Int?]
@@ -105,12 +108,14 @@ public struct BreakdownRow: Hashable, Sendable {
     public init(
         name: String,
         code: String? = nil,
+        flag: String? = nil,
         metrics: [MetricID: MetricValue],
         comparison: [MetricID: MetricValue]? = nil,
         change: [MetricID: Int?] = [:]
     ) {
         self.name = name
         self.code = code
+        self.flag = flag
         self.metrics = metrics
         self.comparison = comparison
         self.change = change

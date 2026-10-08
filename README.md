@@ -21,7 +21,7 @@ the browser, linked where appropriate.
 
 | iOS | macOS |
 | --- | --- |
-| ![Plausely on iPhone](assets/mockup-ios.png) | ![Plausely on macOS](assets/screenshot-macos-sites.png) |
+| ![Plausely on iPhone](assets/mockup-ios.png) | ![Plausely on macOS](assets/screenshot-macos-overview.png) |
 
 ## Requirements
 

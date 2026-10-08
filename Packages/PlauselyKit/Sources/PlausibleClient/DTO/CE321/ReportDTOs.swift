@@ -120,6 +120,7 @@ public struct BreakdownDTO: Decodable, Sendable {
         public let code: String?
         public let browser: String?
         public let version: String?
+        public let flag: String?
         public let metrics: [String: JSONScalar]
         public let comparison: Comparison?
 
@@ -137,6 +138,7 @@ public struct BreakdownDTO: Decodable, Sendable {
             var alpha3: String?
             var browser: String?
             var version: String?
+            var flag: String?
             var metrics: [String: JSONScalar] = [:]
             var comparison: Comparison?
             for key in container.allKeys {
@@ -162,6 +164,11 @@ public struct BreakdownDTO: Decodable, Sendable {
                     browser = try container.decodeIfPresent(String.self, forKey: key)
                 case "version":
                     version = try container.decodeIfPresent(String.self, forKey: key)
+                case "flag", "country_flag":
+                    // Dashboard flag emoji; first one wins.
+                    if flag == nil {
+                        flag = try container.decodeIfPresent(String.self, forKey: key)
+                    }
                 case "comparison":
                     // Nested previous-period values; a malformed comparison
                     // fails loudly like any other required shape.
@@ -183,6 +190,7 @@ public struct BreakdownDTO: Decodable, Sendable {
             self.code = code ?? alpha3
             self.browser = browser
             self.version = version
+            self.flag = flag
             self.metrics = metrics
             self.comparison = comparison
         }

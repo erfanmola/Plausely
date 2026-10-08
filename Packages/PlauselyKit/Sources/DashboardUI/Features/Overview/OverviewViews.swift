@@ -120,7 +120,7 @@ public struct TopStatsGrid: View {
     }
 
     private func statCard(_ stat: TopStat) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             MetricTile(metric: stat.metric)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {

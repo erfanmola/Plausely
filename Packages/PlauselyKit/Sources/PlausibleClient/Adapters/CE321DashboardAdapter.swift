@@ -174,7 +174,7 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
                     }
                 }
             }
-            return BreakdownRow(name: row.name, code: row.code, metrics: metrics, comparison: comparison, change: change)
+            return BreakdownRow(name: row.name, code: row.code, flag: row.flag, metrics: metrics, comparison: comparison, change: change)
         }
         var warnings: [ReportWarning] = []
         if let reason = dto.skipImportedReason {

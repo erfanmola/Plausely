@@ -229,6 +229,7 @@ struct AdapterTests {
         let estonia = try #require(countryEnvelope.value.rows.first)
         #expect(estonia.name == "Estonia")
         #expect(estonia.code == "EE")
+        #expect(estonia.flag == "🇪🇪")
         #expect(estonia.metrics[.visitors] == .count(2))
         #expect(estonia.metrics[.percentage] == .decimal(Decimal(string: "66.67")!))
         #expect(estonia.metrics[.bounceRate] == nil)
@@ -253,6 +254,7 @@ struct AdapterTests {
         let tallinn = try #require(cityEnvelope.value.rows.first)
         #expect(tallinn.name == "Tallinn")
         #expect(tallinn.code == "588409")
+        #expect(tallinn.flag == "🇪🇪")
         #expect(tallinn.metrics[.visitors] == .count(3))
     }
 

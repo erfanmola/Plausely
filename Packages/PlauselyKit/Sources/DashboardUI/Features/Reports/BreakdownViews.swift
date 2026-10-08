@@ -166,17 +166,17 @@ public enum MockBreakdownProviders {
     ]
 
     private static func countryRows() -> [BreakdownRow] {
-        let countries: [(name: String, code: String, visitors: Int64)] = [
-            ("United States", "US", 1200), ("Germany", "DE", 900),
-            ("Iran", "IR", 640), ("United Kingdom", "GB", 480),
-            ("France", "FR", 360), ("Netherlands", "NL", 280),
-            ("Canada", "CA", 210), ("Australia", "AU", 150),
-            ("Japan", "JP", 110), ("Brazil", "BR", 80),
-            ("India", "IN", 55), ("Spain", "ES", 30),
+        let countries: [(name: String, code: String, flag: String, visitors: Int64)] = [
+            ("United States", "US", "🇺🇸", 1200), ("Germany", "DE", "🇩🇪", 900),
+            ("Iran", "IR", "🇮🇷", 640), ("United Kingdom", "GB", "🇬🇧", 480),
+            ("France", "FR", "🇫🇷", 360), ("Netherlands", "NL", "🇳🇱", 280),
+            ("Canada", "CA", "🇨🇦", 210), ("Australia", "AU", "🇦🇺", 150),
+            ("Japan", "JP", "🇯🇵", 110), ("Brazil", "BR", "🇧🇷", 80),
+            ("India", "IN", "🇮🇳", 55), ("Spain", "ES", "🇪🇸", 30),
         ]
         return countries.map { entry in
             BreakdownRow(
-                name: entry.name, code: entry.code,
+                name: entry.name, code: entry.code, flag: entry.flag,
                 metrics: [
                     .visitors: .count(entry.visitors),
                     .percentage: .decimal(Decimal(entry.visitors) / Decimal(4495) * Decimal(100)),
@@ -186,15 +186,15 @@ public enum MockBreakdownProviders {
     }
 
     private static func regionRows() -> [BreakdownRow] {
-        let regions: [(name: String, code: String, visitors: Int64)] = [
-            ("California", "US-CA", 700), ("Texas", "US-TX", 380),
-            ("Bavaria", "DE-BY", 420), ("Berlin", "DE-BE", 310),
-            ("Tehran", "IR-07", 390), ("Isfahan", "IR-04", 180),
-            ("Ontario", "CA-ON", 150), ("Île-de-France", "FR-IDF", 220),
+        let regions: [(name: String, code: String, flag: String, visitors: Int64)] = [
+            ("California", "US-CA", "🇺🇸", 700), ("Texas", "US-TX", "🇺🇸", 380),
+            ("Bavaria", "DE-BY", "🇩🇪", 420), ("Berlin", "DE-BE", "🇩🇪", 310),
+            ("Tehran", "IR-07", "🇮🇷", 390), ("Isfahan", "IR-04", "🇮🇷", 180),
+            ("Ontario", "CA-ON", "🇨🇦", 150), ("Île-de-France", "FR-IDF", "🇫🇷", 220),
         ]
         return regions.map { entry in
             BreakdownRow(
-                name: entry.name, code: entry.code,
+                name: entry.name, code: entry.code, flag: entry.flag,
                 metrics: [
                     .visitors: .count(entry.visitors),
                     .percentage: .decimal(Decimal(entry.visitors) / Decimal(2750) * Decimal(100)),
@@ -204,15 +204,15 @@ public enum MockBreakdownProviders {
     }
 
     private static func cityRows() -> [BreakdownRow] {
-        let cities: [(name: String, code: String, visitors: Int64)] = [
-            ("San Francisco", "5391959", 320), ("Austin", "4671654", 210),
-            ("Munich", "2867714", 240), ("Berlin", "2950159", 310),
-            ("Tehran", "112931", 390), ("Isfahan", "418863", 180),
-            ("Toronto", "6167865", 150), ("Paris", "2988507", 220),
+        let cities: [(name: String, code: String, flag: String, visitors: Int64)] = [
+            ("San Francisco", "5391959", "🇺🇸", 320), ("Austin", "4671654", "🇺🇸", 210),
+            ("Munich", "2867714", "🇩🇪", 240), ("Berlin", "2950159", "🇩🇪", 310),
+            ("Tehran", "112931", "🇮🇷", 390), ("Isfahan", "418863", "🇮🇷", 180),
+            ("Toronto", "6167865", "🇨🇦", 150), ("Paris", "2988507", "🇫🇷", 220),
         ]
         return cities.map { entry in
             BreakdownRow(
-                name: entry.name, code: entry.code,
+                name: entry.name, code: entry.code, flag: entry.flag,
                 metrics: [
                     .visitors: .count(entry.visitors),
                     .percentage: .decimal(Decimal(entry.visitors) / Decimal(2020) * Decimal(100)),
@@ -580,6 +580,25 @@ public struct CountryDistributionView: View {
     }
 }
 
+/// Row glyph: the dashboard flag emoji for geo rows, the family symbol
+/// otherwise. Decorative; always hidden from VoiceOver.
+struct RowGlyph: View {
+    let definition: ReportDefinition
+    let row: BreakdownRow
+
+    var body: some View {
+        Group {
+            if let flag = row.flag {
+                Text(flag)
+            } else {
+                Image(systemName: reportSymbolName(for: definition.kind))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Compact embed: top rows plus a Show-all link. Drives the shared model from
 /// the effective query; the full report destination reuses the same model.
 public struct BreakdownSummaryView: View {
@@ -625,9 +644,7 @@ public struct BreakdownSummaryView: View {
             default:
                 ForEach(Array(model.rows.prefix(previewCount).enumerated()), id: \.offset) { index, row in
                     HStack(spacing: 8) {
-                        Image(systemName: reportSymbolName(for: model.definition.kind))
-                            .foregroundStyle(.secondary)
-                            .accessibilityHidden(true)
+                        RowGlyph(definition: model.definition, row: row)
                         Text(row.name)
                             .lineLimit(1)
                         Spacer()
@@ -1184,6 +1201,7 @@ public struct BreakdownReportView: View {
         if let target = model.definition.drilldown(row), childFactory != nil {
             NavigationLink(value: target) {
                 HStack {
+                    RowGlyph(definition: model.definition, row: row)
                     Text(row.name)
                         .lineLimit(1)
                     Spacer(minLength: 4)
@@ -1197,6 +1215,7 @@ public struct BreakdownReportView: View {
         } else {
             NavigationLink(value: BreakdownRowTarget(kind: model.definition.kind, row: row)) {
                 HStack {
+                    RowGlyph(definition: model.definition, row: row)
                     Text(row.name)
                         .lineLimit(1)
                     Spacer(minLength: 4)
@@ -1259,7 +1278,7 @@ public struct BreakdownRowDetailView: View {
 
     public var body: some View {
         Form {
-            LabeledContent("Name", value: row.name)
+            LabeledContent("Name", value: "\(row.flag.map { "\($0) " } ?? "")\(row.name)")
                 .accessibilityIdentifier("\(prefix)-detail-name")
             if let code = row.code {
                 LabeledContent("Code", value: code)
