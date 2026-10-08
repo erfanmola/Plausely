@@ -1,0 +1,47 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: macos-15
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: macOS Release build
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS
+          -configuration Release -destination 'platform=macOS'
+          CODE_SIGN_IDENTITY=-
+          -derivedDataPath build/DerivedData
+          build
+      - name: iOS Release build (simulator, unsigned)
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS
+          -configuration Release -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          -derivedDataPath build/DerivedData
+          build
+      - name: Package artifacts
+        run: |
+          set -eu
+          mkdir -p dist
+          MACAPP=$(find build/DerivedData/Build/Products/Release -maxdepth 1 -name '*.app' | head -1)
+          ditto -c -k --keepParent "$MACAPP" dist/Plausely-macOS.zip
+          IOSAPP=$(find build/DerivedData/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          ditto -c -k --keepParent "$IOSAPP" dist/Plausely-iOS-simulator.zip
+          ls -la dist
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          NOTES="Beta ${GITHUB_REF_NAME}. Unsigned CI builds for testing: the Mac app is ad-hoc signed, the iOS build targets the simulator. Signed App Store / TestFlight distribution follows with owner credentials."
+          gh release create "$GITHUB_REF_NAME" dist/*.zip --title "$GITHUB_REF_NAME" --notes "$NOTES"

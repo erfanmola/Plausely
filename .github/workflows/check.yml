@@ -1,0 +1,47 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Package tests
+        run: swift test --package-path Packages/PlauselyKit
+      - name: macOS Debug build
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS
+          -configuration Debug -destination 'platform=macOS'
+          CODE_SIGN_IDENTITY=- build
+      - name: iOS simulator Debug build
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS
+          -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17'
+          CODE_SIGNING_ALLOWED=NO build
+      - name: macOS UI tests
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS
+          -destination 'platform=macOS' CODE_SIGN_IDENTITY=- test
+      - name: iOS simulator UI tests
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS
+          -destination 'platform=iOS Simulator,name=iPhone 17'
+          CODE_SIGNING_ALLOWED=NO test
+      - name: macOS Release build
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS
+          -configuration Release -destination 'platform=macOS'
+          CODE_SIGN_IDENTITY=- build
+      - name: iOS simulator Release build
+        run: >
+          xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS
+          -configuration Release -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
