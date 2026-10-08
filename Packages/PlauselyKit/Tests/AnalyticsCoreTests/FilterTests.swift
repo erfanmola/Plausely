@@ -38,7 +38,7 @@ struct FilterTests {
         }
     }
 
-    @Test("segment and geo IDs stay integers; text is rejected")
+    @Test("segment IDs stay integers; geo values stay strings")
     func integerIDs() throws {
         let expr = FilterExpression(clauses: [FilterClause(dimension: .segment, op: .is_, values: [.number(7)])])
         #expect(try expr.serialized() == #"[["is","segment",[7]]]"#)
@@ -46,6 +46,14 @@ struct FilterTests {
         #expect(throws: FilterValidationError.wrongValueType(.segment)) {
             try bad.serialized()
         }
+        // Pinned upstream shapes: regions_test.exs:59 (["EE-39"]) and
+        // cities_test.exs:59 (["591632"]) send strings, never integers.
+        let region = FilterExpression(clauses: [FilterClause(dimension: .region, op: .is_, values: [.text("EE-39")])])
+        #expect(try region.serialized() == #"[["is","visit:region",["EE-39"]]]"#)
+        let city = FilterExpression(clauses: [FilterClause(dimension: .city, op: .is_, values: [.text("591632")])])
+        #expect(try city.serialized() == #"[["is","visit:city",["591632"]]]"#)
+        let country = FilterExpression(clauses: [FilterClause(dimension: .country, op: .is_, values: [.text("GB")])])
+        #expect(try country.serialized() == #"[["is","visit:country",["GB"]]]"#)
     }
 
     @Test("empty clauses and missing prop keys are rejected")

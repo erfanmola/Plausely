@@ -1,24 +1,94 @@
 import AnalyticsCore
 import Foundation
 
+/// A passwordless shared dashboard link: site domain plus the server slug
+/// sent as `?auth=` on every request (the dashboard sends both the query
+/// param and header; the server reads the param). Slugs are revocable
+/// server-side and carry no password. Password-protected links are a typed
+/// unsupported case, never attempted silently.
+public struct SharedLinkRef: Equatable, Codable, Sendable {
+    public let domain: String
+    public let slug: String
+    public init(domain: String, slug: String) {
+        self.domain = domain
+        self.slug = slug
+    }
+
+    /// Parses pasted dashboard links: `/share/:domain?auth=:slug` or any
+    /// dashboard URL carrying `?auth=`. Returns nil for login/session URLs.
+    public static func parse(_ text: String) -> (baseURL: URL, link: SharedLinkRef)? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              var components = URLComponents(string: trimmed.contains("://") ? trimmed : "https://" + trimmed),
+              let host = components.host, !host.isEmpty,
+              let slug = components.queryItems?.first(where: { $0.name == "auth" })?.value,
+              !slug.isEmpty
+        else { return nil }
+        let segments = components.path.split(separator: "/").map(String.init)
+        // Prefer /share/:domain; fall back to the `site` param or first
+        // segment for dashboard URLs (?auth= on /:domain style links).
+        let domain = segments.count >= 2 && segments[0] == "share"
+            ? segments[1]
+            : components.queryItems?.first(where: { $0.name == "site" })?.value
+            ?? segments.first
+        guard let domain, !domain.isEmpty, !domain.contains("login") else { return nil }
+        components.query = nil
+        components.path = ""
+        guard let base = components.url else { return nil }
+        return (base, SharedLinkRef(domain: domain, slug: slug))
+    }
+}
+
 /// Nonsecret account record. Lives in Application Support as versioned JSON,
 /// one file per account. Never holds cookies, passwords, or tokens.
-public struct AccountRecord: Equatable, Codable, Sendable {
-    public static let currentSchemaVersion = 1
+public struct AccountRecord: Equatable, Sendable, Codable {
+    public static let currentSchemaVersion = 2
     public let id: AccountID
     public let baseURL: URL
     public let email: String?
+    public let sharedLink: SharedLinkRef?
     public let createdAt: Date
     public let lastUsedAt: Date
     public let schemaVersion: Int
 
-    public init(id: AccountID, baseURL: URL, email: String?, createdAt: Date = Date(), lastUsedAt: Date = Date()) {
+    public init(
+        id: AccountID, baseURL: URL, email: String?, sharedLink: SharedLinkRef? = nil,
+        createdAt: Date = Date(), lastUsedAt: Date = Date()
+    ) {
         self.id = id
         self.baseURL = baseURL
         self.email = email
+        self.sharedLink = sharedLink
         self.createdAt = createdAt
         self.lastUsedAt = lastUsedAt
         self.schemaVersion = Self.currentSchemaVersion
+    }
+
+    private enum Keys: String, CodingKey {
+        case id, baseURL, email, sharedLink, createdAt, lastUsedAt, schemaVersion
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: Keys.self)
+        id = try container.decode(AccountID.self, forKey: .id)
+        baseURL = try container.decode(URL.self, forKey: .baseURL)
+        email = try container.decodeIfPresent(String.self, forKey: .email)
+        // v1 records predate shared links.
+        sharedLink = try container.decodeIfPresent(SharedLinkRef.self, forKey: .sharedLink)
+        createdAt = try container.decode(Date.self, forKey: .createdAt)
+        lastUsedAt = try container.decode(Date.self, forKey: .lastUsedAt)
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: Keys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encodeIfPresent(email, forKey: .email)
+        try container.encodeIfPresent(sharedLink, forKey: .sharedLink)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(lastUsedAt, forKey: .lastUsedAt)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
     }
 }
 
@@ -102,9 +172,13 @@ public struct AccountStore: Sendable {
 
     private func migrate(_ record: AccountRecord) throws -> AccountRecord {
         // v0 had no schemaVersion field (decoded as 0): stamp current version.
+        // v1 predates shared links (decoded as nil): adopt as-is.
         // Unknown future versions are a typed failure, never silent adoption.
-        if record.schemaVersion == 0 {
-            return AccountRecord(id: record.id, baseURL: record.baseURL, email: record.email, createdAt: record.createdAt, lastUsedAt: record.lastUsedAt)
+        if record.schemaVersion == 0 || record.schemaVersion == 1 {
+            return AccountRecord(
+                id: record.id, baseURL: record.baseURL, email: record.email,
+                sharedLink: record.sharedLink, createdAt: record.createdAt, lastUsedAt: record.lastUsedAt
+            )
         }
         guard record.schemaVersion == AccountRecord.currentSchemaVersion else {
             throw AccountStoreError.corruptStore("schema v\(record.schemaVersion)")

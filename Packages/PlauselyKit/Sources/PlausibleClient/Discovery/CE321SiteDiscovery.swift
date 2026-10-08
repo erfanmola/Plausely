@@ -76,3 +76,41 @@ public struct CE321SiteDiscovery: SiteDiscoveryService, Sendable {
         return SiteBootstrap(snapshot: snapshot, timeZone: timeZone)
     }
 }
+
+/// Passwordless shared dashboard bootstrap over `/share/:domain?auth=`.
+/// Password-protected links render no dashboard container and throw
+/// unknownLayout — a typed unsupported, never attempted silently.
+public struct CE321SharedDiscovery: Sendable {
+    private let transport: HTTPTransport
+
+    public init(transport: HTTPTransport) {
+        self.transport = transport
+    }
+
+    public struct SharedBootstrap: Sendable {
+        public let snapshot: BootstrapSnapshot
+        public let limitedSegmentID: Int?
+        public init(snapshot: BootstrapSnapshot, limitedSegmentID: Int?) {
+            self.snapshot = snapshot
+            self.limitedSegmentID = limitedSegmentID
+        }
+    }
+
+    public func bootstrap(baseURL: URL, domain: String, slug: String) async throws -> SharedBootstrap {
+        let builder = try RequestBuilder(baseURL: baseURL)
+        let request = builder.get(
+            path: "share/\(domain)",
+            query: [URLQueryItem(name: "auth", value: slug)]
+        )
+        let (data, response) = try await transport.send(request, expecting: .html)
+        guard let html = String(data: data, encoding: .utf8),
+              (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw ClientError.siteUnavailable
+        }
+        let snapshot = try CE321BootstrapDecoder.decode(html: html)
+        return SharedBootstrap(
+            snapshot: snapshot,
+            limitedSegmentID: CE321BootstrapDecoder.limitedSegmentID(html: html)
+        )
+    }
+}

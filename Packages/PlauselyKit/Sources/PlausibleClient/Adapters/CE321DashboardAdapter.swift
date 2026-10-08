@@ -9,10 +9,25 @@ import Foundation
 public struct CE321DashboardAdapter: DashboardService, Sendable {
     private let coordinator: SessionCoordinator
     private let transport: HTTPTransport
+    /// Passwordless shared-link mode: requests carry `?auth=` instead of
+    /// session cookies (the server reads the query param). Set only for
+    /// shared-link accounts; session accounts keep cookie auth with no
+    /// silent fallback between the two.
+    private let sharedBase: URL?
+    private let sharedAuth: String?
 
     public init(coordinator: SessionCoordinator, transport: HTTPTransport) {
         self.coordinator = coordinator
         self.transport = transport
+        self.sharedBase = nil
+        self.sharedAuth = nil
+    }
+
+    public init(coordinator: SessionCoordinator, transport: HTTPTransport, sharedBase: URL, sharedAuth: String) {
+        self.coordinator = coordinator
+        self.transport = transport
+        self.sharedBase = sharedBase
+        self.sharedAuth = sharedAuth
     }
 
     // MARK: - Query strings
@@ -46,18 +61,33 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
 
     // MARK: - Calls
 
-    private func get(domain: String, endpoint: String, account: AccountID, base: URL, items: [URLQueryItem]) async throws -> Data {
-        let builder = try RequestBuilder(baseURL: base)
-        let headers = try await coordinator.headers(for: base, account: account)
-        let request = builder.get(path: "api/stats/\(domain)/\(endpoint)", query: items, headers: headers)
+    private func authed(domain: String, endpoint: String, account: AccountID, items: [URLQueryItem]) async throws -> Data {
+        let request = try await requestFor(
+            domain: domain, path: "api/stats/\(domain)/\(endpoint)",
+            account: account, items: items
+        )
         let (data, _) = try await transport.send(request)
         return data
     }
 
+    /// Request builder honoring the account mode: session cookies for
+    /// interactive accounts, `?auth=` slug for shared-link accounts.
+    private func requestFor(domain: String, path: String, account: AccountID, items: [URLQueryItem], accept: String = "application/json") async throws -> URLRequest {
+        if let sharedBase, let sharedAuth {
+            let builder = try RequestBuilder(baseURL: sharedBase)
+            var items = items
+            items.append(URLQueryItem(name: "auth", value: sharedAuth))
+            return builder.get(path: path, query: items, headers: [:], accept: accept)
+        }
+        let credential = try await coordinator.restore(account: account)
+        let builder = try RequestBuilder(baseURL: credential.baseURL)
+        let headers = try await coordinator.headers(for: credential.baseURL, account: account)
+        return builder.get(path: path, query: items, headers: headers, accept: accept)
+    }
+
     public func overview(_ query: DashboardQuery, today: Date) async throws -> ReportEnvelope<Overview> {
-        let credential = try await coordinator.restore(account: query.accountID)
         let items = try Self.queryItems(for: query, today: today)
-        let data = try await get(domain: query.siteID.domain, endpoint: "top-stats", account: query.accountID, base: credential.baseURL, items: items)
+        let data = try await authed(domain: query.siteID.domain, endpoint: "top-stats", account: query.accountID, items: items)
         let dto = try JSONDecoder().decode(TopStatsDTO.self, from: data)
         let stats = try dto.topStats.map { stat -> TopStat in
             TopStat(
@@ -78,11 +108,10 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     }
 
     public func series(_ query: DashboardQuery, today: Date) async throws -> ReportEnvelope<TimeSeries> {
-        let credential = try await coordinator.restore(account: query.accountID)
         var items = try Self.queryItems(for: query, today: today)
         items.append(URLQueryItem(name: "interval", value: query.interval.rawValue))
         items.append(URLQueryItem(name: "metric", value: query.selectedMetric.rawValue))
-        let data = try await get(domain: query.siteID.domain, endpoint: "main-graph", account: query.accountID, base: credential.baseURL, items: items)
+        let data = try await authed(domain: query.siteID.domain, endpoint: "main-graph", account: query.accountID, items: items)
         let dto = try JSONDecoder().decode(MainGraphDTO.self, from: data)
         let value = TimeSeries(
             metric: try Self.metricID(for: dto.metric),
@@ -107,7 +136,6 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
 
     public func breakdown(_ request: BreakdownRequest, today: Date) async throws -> ReportEnvelope<BreakdownPage> {
         let query = request.query
-        let credential = try await coordinator.restore(account: query.accountID)
         var items = try Self.queryItems(for: query, today: today)
         items.append(URLQueryItem(name: "detailed", value: "true"))
         if let sort = request.sort {
@@ -118,7 +146,7 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
         if let search = request.search {
             items.append(URLQueryItem(name: "search", value: search))
         }
-        let data = try await get(domain: query.siteID.domain, endpoint: request.kind.path(), account: query.accountID, base: credential.baseURL, items: items)
+        let data = try await authed(domain: query.siteID.domain, endpoint: request.kind.path(), account: query.accountID, items: items)
         let dto = try JSONDecoder().decode(BreakdownDTO.self, from: data)
         let rows = try dto.results.map { row -> BreakdownRow in
             var metrics: [MetricID: MetricValue] = [:]
@@ -127,38 +155,90 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
                     metrics[metric] = try scalar.metricValue()
                 }
             }
-            return BreakdownRow(name: row.name, code: row.code, metrics: metrics)
+            // Previous-period values ride the nested `comparison` object
+            // only when the query has a comparison; unknown keys follow the
+            // same additive-tolerance rule as primary metrics.
+            var comparison: [MetricID: MetricValue]?
+            var change: [MetricID: Int?] = [:]
+            if let dtoComparison = row.comparison {
+                var mapped: [MetricID: MetricValue] = [:]
+                for (key, scalar) in dtoComparison.metrics {
+                    if let metric = MetricID(rawValue: key) {
+                        mapped[metric] = try scalar.metricValue()
+                    }
+                }
+                comparison = mapped
+                for (key, delta) in dtoComparison.change {
+                    if let metric = MetricID(rawValue: key) {
+                        change.updateValue(delta, forKey: metric)
+                    }
+                }
+            }
+            return BreakdownRow(name: row.name, code: row.code, metrics: metrics, comparison: comparison, change: change)
+        }
+        var warnings: [ReportWarning] = []
+        if let reason = dto.skipImportedReason {
+            warnings.append(ReportWarning(code: "imports-skipped", message: Self.importsSkipMessage(reason)))
         }
         return ReportEnvelope(
             queryID: try QueryID.compute(for: query, today: today),
             value: BreakdownPage(rows: rows),
             retrievedAt: Date(),
-            warnings: []
+            warnings: warnings
         )
     }
 
     public func suggestions(_ request: SuggestionRequest, today: Date) async throws -> [FilterSuggestion] {
         let query = request.query
-        let credential = try await coordinator.restore(account: query.accountID)
         var items = try Self.queryItems(for: query, today: today)
         items.append(URLQueryItem(name: "q", value: request.input))
         let kind = ReportKind.suggestions(filter: request.filterName)
-        let data = try await get(domain: query.siteID.domain, endpoint: kind.path(), account: query.accountID, base: credential.baseURL, items: items)
+        let data = try await authed(domain: query.siteID.domain, endpoint: kind.path(), account: query.accountID, items: items)
         return try JSONDecoder().decode([Suggestion].self, from: data).map {
             FilterSuggestion(label: $0.label, value: $0.value)
         }
     }
 
     public func currentVisitors(account: AccountID, site: SiteID) async throws -> CurrentVisitors {
-        let credential = try await coordinator.restore(account: account)
-        let builder = try RequestBuilder(baseURL: credential.baseURL)
-        let headers = try await coordinator.headers(for: credential.baseURL, account: account)
-        let request = builder.get(path: "api/stats/\(site.domain)/current-visitors", headers: headers)
+        let request = try await requestFor(
+            domain: site.domain, path: "api/stats/\(site.domain)/current-visitors",
+            account: account, items: []
+        )
         let (data, _) = try await transport.send(request)
         guard let count = try? JSONDecoder().decode(Int.self, from: data) else {
             throw ClientError.serverError(status: -1)
         }
         return CurrentVisitors(count: count)
+    }
+
+    public func export(_ query: DashboardQuery, today: Date) async throws -> DashboardExport {
+        var items = try Self.queryItems(for: query, today: today)
+        items.append(URLQueryItem(name: "interval", value: query.interval.rawValue))
+        let request = try await requestFor(
+            domain: query.siteID.domain, path: "\(query.siteID.domain)/export",
+            account: query.accountID, items: items, accept: "text/html"
+        )
+        let (data, response) = try await transport.send(request)
+        guard data.starts(with: [0x50, 0x4B]) else {
+            throw ClientError.serverError(status: -1)
+        }
+        let filename = Self.exportFilename(from: response) ?? "plausely-export.zip"
+        return DashboardExport(filename: filename, data: data)
+    }
+
+    /// Server `content-disposition: attachment; filename="..."`. Falls back
+    /// to nil (caller substitutes an honest default) rather than guessing.
+    static func exportFilename(from response: HTTPURLResponse) -> String? {
+        guard let disposition = response.value(forHTTPHeaderField: "Content-Disposition") else {
+            return nil
+        }
+        guard let quote = disposition.range(of: "filename=") else { return nil }
+        var name = String(disposition[quote.upperBound...]).trimmingCharacters(in: .whitespaces)
+        if name.hasPrefix("\""), let end = name.dropFirst().firstIndex(of: "\"") {
+            name = String(name[name.index(after: name.startIndex)..<end])
+        }
+        let cleaned = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
     }
 
     // MARK: - Mapping
@@ -174,9 +254,23 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     static func warnings(from meta: TopStatsDTO.Meta) -> [ReportWarning] {
         var warnings: [ReportWarning] = []
         if !meta.importsIncluded, let reason = meta.importsSkipReason {
-            warnings.append(ReportWarning(code: "imports-skipped", message: reason))
+            warnings.append(ReportWarning(code: "imports-skipped", message: Self.importsSkipMessage(reason)))
         }
         return warnings
+    }
+
+    /// User-facing import-exclusion sentences, pinned to the upstream
+    /// `query_result.ex` `@imports_warnings` map. Unknown codes surface raw
+    /// rather than inventing text.
+    static func importsSkipMessage(_ reason: String) -> String {
+        switch reason {
+        case "unsupported_query":
+            return "Imported stats are not included in the results because query parameters are not supported."
+        case "unsupported_interval":
+            return "Imported stats are not included because the time dimension (i.e. the interval) is too short."
+        default:
+            return reason
+        }
     }
     static func orderBy(_ sort: ReportSort) throws -> String {
         let entry: [Any]

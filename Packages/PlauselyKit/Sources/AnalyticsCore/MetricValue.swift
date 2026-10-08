@@ -5,7 +5,8 @@ import Foundation
 /// Counts use `Int64`; ratios and averages keep server precision as `Decimal`
 /// until rendering. A missing value is never decoded as zero — every absence
 /// carries a reason. (Phase 02.1; DTO mapping lands in phase 03.)
-public enum MetricValue: Equatable, Sendable {
+/// Hashable so rows can travel through navigation values (05.2).
+public enum MetricValue: Hashable, Sendable {
     case count(Int64)
     case decimal(Decimal)
     case unavailable(MetricUnavailableReason)
@@ -29,7 +30,7 @@ public enum MetricValue: Equatable, Sendable {
 }
 
 /// Why a metric value is absent. Each maps to a distinct UI state.
-public enum MetricUnavailableReason: String, Equatable, Sendable {
+public enum MetricUnavailableReason: String, Hashable, Sendable {
     /// Server returned null for this bucket/cell.
     case null
     /// Metric is not defined in this context (e.g. scroll depth off-page).

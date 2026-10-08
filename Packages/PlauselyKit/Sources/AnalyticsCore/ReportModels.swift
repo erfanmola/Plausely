@@ -87,15 +87,33 @@ public struct TimeSeries: Equatable, Sendable {
 /// One breakdown row. Metrics vary by report and `detailed` flag; absent
 /// columns are absent keys, never zero-filled. `code` carries stable
 /// identifiers (country/region codes) where the server provides them.
-public struct BreakdownRow: Equatable, Sendable {
+/// `comparison` carries the previous-period values the server returns only
+/// when the query has a comparison (upstream `sources_test.exs`
+/// "compares sources with previous period": nested `comparison` with
+/// `change` percents per metric); nil means the server sent none.
+/// `change` is the server's percent change per metric (nil value = the
+/// server could not compute it, e.g. null comparison duration); the client
+/// never computes it. Hashable so rows can travel through navigation
+/// values (05.2).
+public struct BreakdownRow: Hashable, Sendable {
     public let name: String
     public let code: String?
     public let metrics: [MetricID: MetricValue]
+    public let comparison: [MetricID: MetricValue]?
+    public let change: [MetricID: Int?]
 
-    public init(name: String, code: String? = nil, metrics: [MetricID: MetricValue]) {
+    public init(
+        name: String,
+        code: String? = nil,
+        metrics: [MetricID: MetricValue],
+        comparison: [MetricID: MetricValue]? = nil,
+        change: [MetricID: Int?] = [:]
+    ) {
         self.name = name
         self.code = code
         self.metrics = metrics
+        self.comparison = comparison
+        self.change = change
     }
 }
 

@@ -47,10 +47,13 @@ public enum FilterDimension: String, Hashable, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// Dimensions whose values are integer IDs on the wire.
-    var usesIntegerValues: Bool {
+    /// Dimensions whose values are integer IDs on the wire. Only `segment`
+    /// is integer: pinned upstream `cities_test.exs:59` sends
+    /// `["is","visit:city",["591632"]]` (string) and `regions_test.exs:59`
+    /// sends `["is","visit:region",["EE-39"]]` (string).
+    public var usesIntegerValues: Bool {
         switch self {
-        case .segment, .region, .city: return true
+        case .segment: return true
         default: return false
         }
     }
@@ -69,7 +72,8 @@ public enum FilterOperator: String, Hashable, Codable, Sendable {
 }
 
 /// A clause value. Text and integer IDs are distinct on the wire and must
-/// never be confused (segment/region/city IDs are integers).
+/// never be confused (only segment IDs are integers; geo values are strings
+/// per the pinned upstream region/city filter shapes).
 public enum FilterValue: Hashable, Sendable {
     case text(String)
     case number(Int)
@@ -114,7 +118,8 @@ public struct FilterExpression: Hashable, Sendable {
     /// - `contains`/`contains_not` are rejected for screen/country/region/city.
     /// - `is_not` on goal serializes as the `has_not_done` wrapper.
     /// - `has_not_done` is accepted only for goal.
-    /// - Segment/region/city values must be integers.
+    /// - Only segment values must be integers; region/city/country values
+    ///   are strings (pinned upstream filter shapes).
     public func serialized() throws -> String {
         let outer: [Any] = try clauses.map { try serialize(clause: $0) }
         // `.withoutEscapingSlashes` matches the dashboard's JSON.stringify

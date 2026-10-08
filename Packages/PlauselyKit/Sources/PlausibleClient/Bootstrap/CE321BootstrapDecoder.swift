@@ -102,6 +102,18 @@ public enum CE321BootstrapDecoder {
         return TimeZone(identifier: value)
     }
 
+    /// Locked shared-link segment id from the dashboard container
+    /// (`data-limited-to-segment-id`, upstream stats.html.heex:55). Nil
+    /// means unlocked. Password-protected links render no container, so
+    /// they surface as unknown-layout upstream, never as unlocked.
+    public static func limitedSegmentID(html: String) -> Int? {
+        guard let document = try? SwiftSoup.parse(html),
+              let container = try? document.select("#stats-react-container").first(),
+              let raw = try? container.attr("data-limited-to-segment-id"),
+              !raw.isEmpty else { return nil }
+        return Int(raw)
+    }
+
     /// Domains from the `/sites` overview page (`[data-domain]`). Sorted and
     /// deduplicated; the page is the complete enumeration (the 9-row
     /// `/api/sites` endpoint is never used alone).

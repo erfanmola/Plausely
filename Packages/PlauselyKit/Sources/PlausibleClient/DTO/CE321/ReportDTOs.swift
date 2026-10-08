@@ -66,14 +66,62 @@ public struct MainGraphDTO: Decodable, Sendable {
 
 /// Breakdown response shared by all report families. Rows carry `name` plus
 /// family-specific metric keys; identifiers (`code`, `browser`, `version`)
-/// ride along as strings for drilldown context.
+/// ride along as strings for drilldown context. With a comparison query the
+/// server nests `comparison` (previous-period metric values, nulls allowed)
+/// with `change` (percent deltas, null where uncomputable) per row; both
+/// are absent without a comparison.
 public struct BreakdownDTO: Decodable, Sendable {
+    public struct Comparison: Decodable, Sendable {
+        public let metrics: [String: JSONScalar]
+        public let change: [String: Int?]
+
+        private struct Key: CodingKey {
+            var stringValue: String
+            var intValue: Int?
+            init?(stringValue: String) { self.stringValue = stringValue; self.intValue = nil }
+            init?(intValue: Int) { self.stringValue = "\(intValue)"; self.intValue = intValue }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: Key.self)
+            var metrics: [String: JSONScalar] = [:]
+            var change: [String: Int?] = [:]
+            for key in container.allKeys {
+                switch key.stringValue {
+                case "change":
+                    // Percent deltas per metric, null where the server could
+                    // not compute one. Decoded key-by-key so one malformed
+                    // entry cannot wipe the rest.
+                    if let nested = try? container.nestedContainer(keyedBy: Key.self, forKey: key) {
+                        for changeKey in nested.allKeys {
+                            if (try? nested.decodeNil(forKey: changeKey)) == true {
+                                // Explicit server null (uncomputable delta):
+                                // updateValue keeps the key with a nil delta
+                                // instead of removing it.
+                                change.updateValue(nil, forKey: changeKey.stringValue)
+                            } else if let delta = try? nested.decode(Int.self, forKey: changeKey) {
+                                change.updateValue(delta, forKey: changeKey.stringValue)
+                            }
+                        }
+                    }
+                default:
+                    if let scalar = try? container.decode(JSONScalar.self, forKey: key) {
+                        metrics[key.stringValue] = scalar
+                    }
+                }
+            }
+            self.metrics = metrics
+            self.change = change
+        }
+    }
+
     public struct Row: Decodable, Sendable {
         public let name: String
         public let code: String?
         public let browser: String?
         public let version: String?
         public let metrics: [String: JSONScalar]
+        public let comparison: Comparison?
 
         private struct AnyKey: CodingKey {
             var stringValue: String
@@ -86,22 +134,38 @@ public struct BreakdownDTO: Decodable, Sendable {
             let container = try decoder.container(keyedBy: AnyKey.self)
             var name: String?
             var code: String?
+            var alpha3: String?
             var browser: String?
             var version: String?
             var metrics: [String: JSONScalar] = [:]
+            var comparison: Comparison?
             for key in container.allKeys {
                 switch key.stringValue {
                 case "name":
                     name = try container.decode(String.self, forKey: key)
-                case "code", "alpha_3":
-                    // Stable geo identifier; first one wins.
+                case "code":
+                    // Stable geo identifier, ISO-2 for filtering. City
+                    // geoname IDs arrive as integers (pinned upstream
+                    // cities_test.exs:40: `"code"=>588_409`), so integers
+                    // stringify instead of failing the row.
                     if code == nil {
-                        code = try container.decodeIfPresent(String.self, forKey: key)
+                        let text: String? = try? container.decodeIfPresent(String.self, forKey: key)
+                        let number: Int? = try? container.decodeIfPresent(Int.self, forKey: key)
+                        code = text ?? number.map { "\($0)" }
+                    }
+                case "alpha_3":
+                    // ISO-3 fallback when no `code` is present.
+                    if alpha3 == nil {
+                        alpha3 = try? container.decodeIfPresent(String.self, forKey: key) ?? nil
                     }
                 case "browser":
                     browser = try container.decodeIfPresent(String.self, forKey: key)
                 case "version":
                     version = try container.decodeIfPresent(String.self, forKey: key)
+                case "comparison":
+                    // Nested previous-period values; a malformed comparison
+                    // fails loudly like any other required shape.
+                    comparison = try container.decodeIfPresent(Comparison.self, forKey: key)
                 default:
                     // Numeric metric columns; unexpected strings are kept as
                     // scalars so the adapter rejects them loudly.
@@ -116,14 +180,27 @@ public struct BreakdownDTO: Decodable, Sendable {
                 ))
             }
             self.name = name
-            self.code = code
+            self.code = code ?? alpha3
             self.browser = browser
             self.version = version
             self.metrics = metrics
+            self.comparison = comparison
         }
     }
 
     public let results: [Row]
+    public let skipImportedReason: String?
+
+    enum BreakdownKeys: String, CodingKey {
+        case results
+        case skipImportedReason = "skip_imported_reason"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: BreakdownKeys.self)
+        results = try container.decode([Row].self, forKey: .results)
+        skipImportedReason = try container.decodeIfPresent(String.self, forKey: .skipImportedReason)
+    }
 }
 
 /// Suggestion pairs for one filter dimension (decoded as a bare array).

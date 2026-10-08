@@ -76,4 +76,38 @@ struct StoreTests {
         #expect(!encoded.lowercased().contains("token"))
         try FileManager.default.removeItem(at: dir)
     }
+
+    @Test("shared links parse, persist, and migrate from v1 records")
+    func sharedLinks() throws {
+        // Dashboard link shapes.
+        let share = SharedLinkRef.parse("https://stats.example.com/share/shop.example?auth=abc123")
+        #expect(share?.link == SharedLinkRef(domain: "shop.example", slug: "abc123"))
+        #expect(share?.baseURL.absoluteString == "https://stats.example.com")
+        #expect(SharedLinkRef.parse("https://stats.example.com/sites") == nil)
+        #expect(SharedLinkRef.parse("https://stats.example.com/login") == nil)
+        #expect(SharedLinkRef.parse("") == nil)
+
+        // Roundtrip with a slug.
+        let dir = FileManager.default.temporaryDirectory.appending(path: "plausely-acct-\(UUID().uuidString)")
+        let store = AccountStore(directory: dir)
+        let shared = AccountRecord(
+            id: AccountID(), baseURL: URL(string: "https://stats.example.com")!, email: nil,
+            sharedLink: SharedLinkRef(domain: "shop.example", slug: "abc123")
+        )
+        try store.save(shared)
+        #expect(try store.load(id: shared.id) == shared)
+
+        // v1 JSON (no sharedLink key, schema 1) migrates to current.
+        let v1id = AccountID()
+        let v1 = """
+        {"id":{"rawValue":"\(v1id.rawValue.uuidString)"},"baseURL":"https:\\/\\/a.test","email":"a@test","createdAt":718000000,"lastUsedAt":718000000,"schemaVersion":1}
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try v1.write(to: dir.appending(path: "\(v1id.rawValue.uuidString).json"), atomically: true, encoding: .utf8)
+        let migrated = try #require(try store.load(id: v1id))
+        #expect(migrated.schemaVersion == AccountRecord.currentSchemaVersion)
+        #expect(migrated.sharedLink == nil)
+        #expect(migrated.email == "a@test")
+        try FileManager.default.removeItem(at: dir)
+    }
 }

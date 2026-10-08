@@ -42,14 +42,16 @@ public struct RequestBuilder: Sendable {
     /// `path` carries pre-encoded segments (see `ReportKind.path()`); it is
     /// concatenated onto any preserved reverse-proxy prefix WITHOUT
     /// re-encoding, so `%2F` drilldown segments survive exactly once.
-    public func get(path: String, query: [URLQueryItem] = [], headers: [String: String] = [:]) -> URLRequest {
+    /// `accept` defaults to JSON; HTML-pipeline routes (dashboard export)
+    /// need `text/html` or the server answers 406.
+    public func get(path: String, query: [URLQueryItem] = [], headers: [String: String] = [:], accept: String = "application/json") -> URLRequest {
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         let prefix = components.percentEncodedPath
         components.percentEncodedPath = (prefix == "/" || prefix.isEmpty ? "" : prefix) + "/" + path
         components.queryItems = query.isEmpty ? nil : query
         var request = URLRequest(url: components.url!)
         request.httpMethod = "GET"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(accept, forHTTPHeaderField: "Accept")
         for (field, value) in headers {
             request.setValue(value, forHTTPHeaderField: field)
         }
