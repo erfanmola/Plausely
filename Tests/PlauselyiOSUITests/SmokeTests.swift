@@ -101,21 +101,32 @@ final class SiteShellTests: XCTestCase {
         // Short press-drags, never full swipes: fling momentum leapfrogs
         // tall sections (overview + chart + table span screens), and
         // List-virtualized rows only exist while on-screen, so a skipped
-        // section polls as missing forever.
+        // section polls as missing forever. Once found, ease the target
+        // into the middle band so taps land and neighbors stay visible.
         let list = element("site-detail")
-        while !target.exists, Date() < deadline {
-            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+        func nudge(_ up: Bool) {
+            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.7 : 0.3))
+            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.55 : 0.45))
             from.press(forDuration: 0.1, thenDragTo: to)
-            sleep(1)
         }
-        // Cells rendered at the bottom edge (home-indicator zone) exist but
-        // never receive taps until scrolled fully on-screen.
-        let hittableDeadline = Date().addingTimeInterval(5)
-        while target.exists, !target.isHittable, Date() < hittableDeadline {
-            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-            from.press(forDuration: 0.1, thenDragTo: to)
+        while Date() < deadline {
+            if target.exists {
+                let frame = target.frame
+                let height = app.frame.height
+                if frame.height > height * 0.6 { break }
+                if frame.minY > height * 0.25, frame.maxY < height * 0.8 { break }
+                if frame.maxY >= height * 0.8, frame.minY < height {
+                    nudge(true)
+                } else if frame.minY < height * 0.25, frame.maxY > 0 {
+                    nudge(false)
+                } else {
+                    nudge(true)
+                }
+            } else {
+                let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+                from.press(forDuration: 0.1, thenDragTo: to)
+            }
             sleep(1)
         }
         return target
