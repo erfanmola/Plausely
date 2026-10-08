@@ -34,5 +34,9 @@ let package = Package(
             dependencies: ["PlausibleClient"],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(
+            name: "DashboardUITests",
+            dependencies: ["DashboardUI", "AnalyticsCore"]
+        ),
     ]
 )
