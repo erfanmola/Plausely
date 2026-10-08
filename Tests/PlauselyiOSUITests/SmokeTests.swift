@@ -75,7 +75,7 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
         XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
         // The instance menu is a native menu button titled by the account.
-        element("owner@example.com").tap()
+        menuButton("owner@example.com").tap()
         app.descendants(matching: .any)["viewer@example.com"].firstMatch.tap()
         XCTAssertTrue(element("site-row-local.example").waitForExistence(timeout: 15))
         XCTAssertFalse(element("site-row-alpha-1.example.com").waitForExistence(timeout: 5))
@@ -157,10 +157,10 @@ final class SiteShellTests: XCTestCase {
         launch()
         openDetail()
         XCTAssertTrue(reveal("segment-apply-7").waitForExistence(timeout: 15))
-        element("segment-apply-7").tap()
+        reveal("segment-apply-7").tap()
         XCTAssertTrue(element("segment-applied-7").waitForExistence(timeout: 15))
         XCTAssertTrue(element("Operating system is iOS").waitForExistence(timeout: 15))
-        element("segment-clear").tap()
+        reveal("segment-clear").tap()
         XCTAssertFalse(element("Operating system is iOS").waitForExistence(timeout: 5))
     }
 
@@ -245,6 +245,12 @@ final class SiteShellTests: XCTestCase {
         // title: card name texts are StaticTexts and never collide.
         let button = app.descendants(matching: .button)[title].firstMatch
         XCTAssertTrue(button.waitForExistence(timeout: timeout), "menu \(title)")
+        let deadline = Date().addingTimeInterval(5)
+        var swipes = 0
+        while !button.isHittable, Date() < deadline, swipes < 3 {
+            app.swipeUp()
+            swipes += 1
+        }
         return button
     }
 
@@ -387,16 +393,15 @@ final class SiteShellTests: XCTestCase {
         openDetail()
         // Previous-period comparison retargets every breakdown with
         // previous values and server deltas.
-        element("No comparison").tap()
+        menuButton("No comparison").tap()
         menuOption("Previous period").tap()
         XCTAssertTrue(element("Previous period").waitForExistence(timeout: 15))
         // Compact summaries gain change badges on the primary column.
         XCTAssertTrue(reveal("breakdown-sources-summary-change-0-visitors").waitForExistence(timeout: 15))
-        // The full report renders the comparison query's rows; its grid
-        // cells are visual-only (LazyVGrid drops static cell content from
-        // the AX tree, AX-proven 05.5), so the comparison payload is
-        // proven through the leaf detail pushed from the full report.
-        // Every report reloads at once under a new comparison, so the tap
+        // The full report renders the comparison query's rows; the leaf
+        // detail pushed from the full report proves the comparison
+        // payload. Every report reloads at once under a new comparison,
+        // so the tap
         // can land mid-layout: retry until the sheet opens.
         do {
             let deadline = Date().addingTimeInterval(30)
