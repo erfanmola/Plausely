@@ -87,8 +87,10 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["alpha-1.example.com"].waitForExistence(timeout: 15))
     }
 
-    private func menuOption(_ option: String) -> XCUIElement {
-        app.descendants(matching: .any)[option].firstMatch
+    private func menuOption(_ option: String, timeout: TimeInterval = 15) -> XCUIElement {
+        let match = app.descendants(matching: .any)[option].firstMatch
+        XCTAssertTrue(match.waitForExistence(timeout: timeout), "option \(option)")
+        return match
     }
 
     private func reveal(_ identifier: String, timeout: TimeInterval = 15) -> XCUIElement {
@@ -237,11 +239,13 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("site-detail").waitForExistence(timeout: 15))
     }
 
-    private func menuButton(_ title: String) -> XCUIElement {
+    private func menuButton(_ title: String, timeout: TimeInterval = 15) -> XCUIElement {
         // The metric Menu drops its accessibility id (it inherits the
         // ancestor's, like macOS Menus), so match the tappable Button by
         // title: card name texts are StaticTexts and never collide.
-        app.descendants(matching: .button)[title].firstMatch
+        let button = app.descendants(matching: .button)[title].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: timeout), "menu \(title)")
+        return button
     }
 
     func testUtmHubToFilter() throws {

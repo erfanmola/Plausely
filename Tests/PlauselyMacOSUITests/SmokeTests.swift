@@ -70,8 +70,8 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
         // The instance menu is a native menu button titled by the account;
         // on macOS it inherits the sidebar identifier, so match titles.
-        app.menuButtons["owner@example.com"].click()
-        app.menuItems["viewer@example.com"].click()
+        menuButton("owner@example.com").click()
+        menuItem("viewer@example.com").click()
         XCTAssertTrue(element("site-row-local.example").waitForExistence(timeout: 15))
         XCTAssertFalse(element("site-row-alpha-1.example.com").waitForExistence(timeout: 5))
     }
@@ -87,6 +87,20 @@ final class SiteShellTests: XCTestCase {
     /// scrolling, and keys never reach the list under XCTest; clicking the
     /// scrollbar track pages down (one page per click) and never triggers
     /// app controls. Our targets always sit below the fold.
+    /// Menu access with waits: on slower renderers the toolbar menus
+    /// arrive after the detail does, so bare taps race and flake.
+    private func menuButton(_ title: String, timeout: TimeInterval = 15) -> XCUIElement {
+        let button = app.menuButtons[title]
+        XCTAssertTrue(button.waitForExistence(timeout: timeout), "menu \(title)")
+        return button
+    }
+
+    private func menuItem(_ title: String, timeout: TimeInterval = 15) -> XCUIElement {
+        let item = app.menuItems[title]
+        XCTAssertTrue(item.waitForExistence(timeout: timeout), "menu item \(title)")
+        return item
+    }
+
     private func reveal(_ identifier: String, timeout: TimeInterval = 15) -> XCUIElement {
         let target = element(identifier)
         let deadline = Date().addingTimeInterval(timeout)
@@ -97,28 +111,31 @@ final class SiteShellTests: XCTestCase {
             bars.element(boundBy: 0).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.68)).click()
             pages += 1
         }
+        // Slow renderers may need a beat after the last page before the
+        // frame settles; never hand back an unhittable target silently.
+        while !target.isHittable, Date() < deadline { sleep(1) }
         return target
     }
 
     func testQueryToolbarPeriodsAndComparison() throws {
         launch()
         openDetail()
-        app.menuButtons["Last 28 days"].click()
-        app.menuItems["Last 7 days"].click()
+        menuButton("Last 28 days").click()
+        menuItem("Last 7 days").click()
         XCTAssertTrue(app.menuButtons["Last 7 days"].waitForExistence(timeout: 15))
-        app.menuButtons["Last 7 days"].click()
-        app.menuItems["Yesterday"].click()
+        menuButton("Last 7 days").click()
+        menuItem("Yesterday").click()
         XCTAssertTrue(app.menuButtons["Yesterday"].waitForExistence(timeout: 15))
-        app.menuButtons["No comparison"].click()
-        app.menuItems["Previous period"].click()
+        menuButton("No comparison").click()
+        menuItem("Previous period").click()
         XCTAssertTrue(app.menuButtons["Previous period"].waitForExistence(timeout: 15))
         XCTAssertTrue(element("match-weekday-toggle").waitForExistence(timeout: 15))
-        app.menuButtons["Previous period"].click()
-        app.menuItems["No comparison"].click()
-        app.menuButtons["Yesterday"].click()
-        app.menuItems["Realtime"].click()
-        app.menuButtons["No comparison"].click()
-        app.menuItems["Previous period"].click()
+        menuButton("Previous period").click()
+        menuItem("No comparison").click()
+        menuButton("Yesterday").click()
+        menuItem("Realtime").click()
+        menuButton("No comparison").click()
+        menuItem("Previous period").click()
         XCTAssertTrue(element("Comparisons are off for realtime.").waitForExistence(timeout: 15))
     }
 
@@ -315,8 +332,8 @@ final class SiteShellTests: XCTestCase {
         openDetail()
         // Previous-period comparison retargets every breakdown with
         // previous values and server deltas.
-        app.menuButtons["No comparison"].click()
-        app.menuItems["Previous period"].click()
+        menuButton("No comparison").click()
+        menuItem("Previous period").click()
         XCTAssertTrue(app.menuButtons["Previous period"].waitForExistence(timeout: 15))
         // Compact summaries gain change badges on the primary column; the
         // full report renders the comparison query's rows.
@@ -349,8 +366,8 @@ final class SiteShellTests: XCTestCase {
         // The chart exposes a stable voice label (its id is shadowed).
         XCTAssertTrue(element("Unique visitors chart, 8 buckets").waitForExistence(timeout: 15))
         // Switching the chart metric reloads the series with its own identity.
-        app.menuButtons["Unique visitors"].click()
-        app.menuItems["Total visits"].click()
+        menuButton("Unique visitors").click()
+        menuItem("Total visits").click()
         XCTAssertTrue(element("Total visits chart, 8 buckets").waitForExistence(timeout: 15))
         // The accessible table lists one row per bucket with exact values;
         // the nil bucket renders as an explicit gap, never a zero.
