@@ -26,6 +26,7 @@ final class SmokeTests: XCTestCase {
 }
 
 
+
 /// Site shell against the deterministic 13-site mock directory: sidebar
 /// selection, long names, detail/back, and instance switching.
 @MainActor

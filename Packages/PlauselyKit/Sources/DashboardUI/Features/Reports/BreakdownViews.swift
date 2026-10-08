@@ -595,6 +595,7 @@ struct RowGlyph: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .frame(width: 24, alignment: .center)
         .accessibilityHidden(true)
     }
 }
@@ -1151,43 +1152,46 @@ public struct BreakdownReportView: View {
     /// Lazy aligned grid on both platforms: every column always renders
     /// (nothing collapses away like Table's automatic columns), rows stay
     /// lazy for long reports, and sorting stays server-side via the menu.
-    private var gridColumns: [GridItem] {
-        [GridItem(.flexible(minimum: 100), alignment: .leading)] +
-            model.definition.columns.map { _ in GridItem(.fixed(92), alignment: .trailing) }
-    }
-
     private var dataGrid: some View {
         // Wide families (pages: 6 metric columns) exceed phone widths:
-        // scroll horizontally instead of clipping columns away.
+        // scroll horizontally instead of clipping columns away. A Grid
+        // (not LazyVGrid) keeps every column aligned across rows on both
+        // platforms and keeps cells visible to accessibility: LazyVGrid
+        // drops static cell content from the AX tree and, on iOS, never
+        // rendered the value cells at all (blank since 05.1, proven by
+        // period screenshots). Pages stay small because the model paginates
+        // server-side, so nothing lazy is lost.
         ScrollView(.horizontal, showsIndicators: true) {
-            LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 6) {
-            Text("Name")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ForEach(model.definition.columns, id: \.self) { metric in
-                Text(MetricID.descriptor(for: metric).displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            ForEach(Array(model.rows.enumerated()), id: \.offset) { index, row in
-                nameCell(row: row, index: index)
-                ForEach(model.definition.columns, id: \.self) { metric in
-                    // Visual-only cell: LazyVGrid drops static cell content
-                    // from the AX tree (AX-proven 05.5: only row links and
-                    // the footer survive), so VoiceOver reaches values and
-                    // comparison through the summary badges and the
-                    // all-column row detail instead.
-                    VStack(alignment: .trailing, spacing: 0) {
-                        Text(row.metrics[metric].map { formatter.string(for: $0, as: metric) } ?? "–")
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                GridRow {
+                    Text("Name")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ForEach(model.definition.columns, id: \.self) { metric in
+                        Text(MetricID.descriptor(for: metric).displayName)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
-                        if let short = shortChangeText(row.change[metric] ?? nil) {
-                            Text(short)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                            .gridColumnAlignment(.trailing)
+                    }
+                }
+                ForEach(Array(model.rows.enumerated()), id: \.offset) { index, row in
+                    GridRow {
+                        nameCell(row: row, index: index)
+                        ForEach(model.definition.columns, id: \.self) { metric in
+                            VStack(alignment: .trailing, spacing: 0) {
+                                Text(row.metrics[metric].map { formatter.string(for: $0, as: metric) } ?? "–")
+                                    .foregroundStyle(.secondary)
+                                    .monospacedDigit()
+                                if let short = shortChangeText(row.change[metric] ?? nil) {
+                                    Text(short)
+                                        .font(.caption2)
+                                        .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil))
+                                }
+                            }
+                            .gridColumnAlignment(.trailing)
                         }
                     }
                 }
-            }
             }
         }
     }

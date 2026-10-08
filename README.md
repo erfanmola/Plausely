@@ -19,9 +19,9 @@ the browser, linked where appropriate.
 
 ## Screenshots
 
-| iOS | macOS |
-| --- | --- |
-| ![Plausely on iPhone](assets/mockup-ios.png) | ![Plausely on macOS](assets/screenshot-macos-overview.png) |
+| iOS overview | iOS geography | macOS |
+| --- | --- | --- |
+| ![Overview on iPhone](assets/screenshot-ios-overview.png) | ![Geography on iPhone](assets/screenshot-ios-geo.png) | ![Plausely on macOS](assets/screenshot-macos-overview.png) |
 
 ## Requirements
 
