@@ -13,6 +13,8 @@ public protocol WebLoginBridge: Sendable {
 public enum BridgeError: Error, Equatable {
     case formFillFailed(String)
     case twoFactorRequired
+    case invalidCredentials
+    case timedOut
     case unexpectedLanding(String?)
 }
 
@@ -55,22 +57,43 @@ public struct WebAuthenticationBridge: WebLoginBridge, Sendable {
         guard fillResult == "submitted" else {
             throw BridgeError.formFillFailed(String(describing: fillResult))
         }
-        let landed: String = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
-            let delegate = LandingDelegate(
-                successPrefix: "/sites",
-                twoFactorPrefix: "/2fa",
-                onSuccess: { cont.resume(returning: "sites") },
-                onTwoFactor: { cont.resume(throwing: BridgeError.twoFactorRequired) },
-                onFail: { cont.resume(throwing: $0) }
-            )
-            retainers.append(delegate)
-            webView.navigationDelegate = delegate
+        // Landing race: success (/sites), 2FA (/2fa), rejected credentials
+        // (back on /login with an error flash), navigation errors, or a
+        // 60s timeout. A rejected password previously hung here forever.
+        let navigationError = NavigationErrorBox()
+        let errorDelegate = FailOnlyDelegate(box: navigationError)
+        retainers.append(errorDelegate)
+        webView.navigationDelegate = errorDelegate
+        let deadline = Date().addingTimeInterval(60)
+        var landed = false
+        while !landed {
+            if let error = navigationError.error { throw error }
+            let path = webView.url?.path() ?? ""
+            if path.hasPrefix("/sites") {
+                landed = true
+            } else if path.contains("/2fa") {
+                throw BridgeError.twoFactorRequired
+            } else if path.hasSuffix("/login"), await loginRejected(webView) {
+                throw BridgeError.invalidCredentials
+            }
+            if !landed {
+                if Date() > deadline { throw BridgeError.timedOut }
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            }
         }
-        retainers.removeAll()
         _ = landed
+        retainers.removeAll()
         return await withCheckedContinuation { cont in
             config.websiteDataStore.httpCookieStore.getAllCookies { cont.resume(returning: $0) }
         }
+    }
+
+    /// Dashboard rejection flash on a re-rendered login page.
+    @MainActor
+    private func loginRejected(_ webView: WKWebView) async -> Bool {
+        (try? await webView.evaluateJavaScript(
+            "(document.body ? document.body.innerText : '').match(/wrong email or password|invalid email|invalid credentials/i) !== null"
+        )) as? Bool ?? false
     }
 
     private func jsString(_ value: String) -> String {
@@ -93,23 +116,18 @@ private final class FinishDelegate: NSObject, WKNavigationDelegate, @unchecked S
     func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) { fail(error) }
 }
 
-private final class LandingDelegate: NSObject, WKNavigationDelegate, @unchecked Sendable {
-    let successPrefix: String
-    let twoFactorPrefix: String
-    let onSuccess: () -> Void
-    let onTwoFactor: () -> Void
-    let onFail: (Error) -> Void
-    var done = false
-    init(successPrefix: String, twoFactorPrefix: String, onSuccess: @escaping () -> Void, onTwoFactor: @escaping () -> Void, onFail: @escaping (Error) -> Void) {
-        self.successPrefix = successPrefix; self.twoFactorPrefix = twoFactorPrefix
-        self.onSuccess = onSuccess; self.onTwoFactor = onTwoFactor; self.onFail = onFail
-    }
-    func webView(_ webView: WKWebView, didCommit _: WKNavigation!) {
-        guard !done, let path = webView.url?.path() else { return }
-        if path.hasPrefix(successPrefix) { done = true; onSuccess() }
-        else if path.contains(twoFactorPrefix) { done = true; onTwoFactor() }
-    }
+/// Records navigation failures for the polling landing loop.
+private final class NavigationErrorBox: @unchecked Sendable {
+    var error: Error?
+}
+
+private final class FailOnlyDelegate: NSObject, WKNavigationDelegate, @unchecked Sendable {
+    let box: NavigationErrorBox
+    init(box: NavigationErrorBox) { self.box = box }
     func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
-        if !done { done = true; onFail(error) }
+        if box.error == nil { box.error = error }
+    }
+    func webView(_: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
+        if box.error == nil { box.error = error }
     }
 }

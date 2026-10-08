@@ -30,6 +30,37 @@ final class SmokeTests: XCTestCase {
 
 
 
+
+/// TEMPORARY asset refresh. Removed after capturing.
+final class TempAssetRefresh: XCTestCase {
+    private var app: XCUIApplication!
+
+    private func element(_ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
+    }
+
+    func testRefreshAssets() throws {
+        app = XCUIApplication()
+        app.launchArguments.append("-plausely-mock-sites")
+        app.launch()
+        let dir = URL(fileURLWithPath: "/tmp/plausely-demo", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 30))
+        element("site-row-alpha-1.example.com").tap()
+        XCTAssertTrue(element("overview-stat-visitors").waitForExistence(timeout: 30))
+        sleep(2)
+        try? app.screenshot().pngRepresentation.write(to: dir.appending(path: "asset-ios-overview.png"))
+        let target = element("breakdown-countries-summary-0")
+        let deadline = Date().addingTimeInterval(30)
+        while !target.exists, Date() < deadline {
+            app.swipeUp()
+            sleep(1)
+        }
+        sleep(1)
+        try? app.screenshot().pngRepresentation.write(to: dir.appending(path: "asset-ios-geo.png"))
+    }
+}
+
 /// Site shell against the deterministic 13-site mock directory: sidebar
 /// selection, long names, detail/back, and instance switching.
 @MainActor

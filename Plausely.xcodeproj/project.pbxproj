@@ -3,17 +3,17 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F60040 /* PlauselyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60010 /* PlauselyApp.swift */; };
 		A1B2C3D4E5F60042 /* DashboardUI in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60018 /* DashboardUI */; };
 		A1B2C3D4E5F60043 /* PlauselyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60012 /* PlauselyApp.swift */; };
-		A1B2C3D4E5F6006D /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60060 /* SmokeTests.swift */; };
-		A1B2C3D4E5F6006E /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60062 /* SmokeTests.swift */; };
 		A1B2C3D4E5F60044 /* PlauselyCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60013 /* PlauselyCommands.swift */; };
 		A1B2C3D4E5F60046 /* DashboardUI in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60018 /* DashboardUI */; };
+		A1B2C3D4E5F6006D /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60060 /* SmokeTests.swift */; };
+		A1B2C3D4E5F6006E /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60062 /* SmokeTests.swift */; };
 		B1B2C3D4E5F60080 /* LiveWiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60082 /* LiveWiring.swift */; };
 		B1B2C3D4E5F60081 /* LiveWiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60083 /* LiveWiring.swift */; };
 		B1B2C3D4E5F60087 /* PlausibleClient in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D4E5F60084 /* PlausibleClient */; };
@@ -45,10 +45,6 @@
 		A1B2C3D4E5F60012 /* PlauselyApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyApp.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60013 /* PlauselyCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyCommands.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60014 /* Plausely.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Plausely.entitlements; sourceTree = "<group>"; };
-		B1B2C3D4E5F60082 /* LiveWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWiring.swift; sourceTree = "<group>"; };
-		B1B2C3D4E5F60083 /* LiveWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWiring.swift; sourceTree = "<group>"; };
-		B1B2C3D4E5F60090 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		B1B2C3D4E5F60091 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F60015 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60016 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60060 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
@@ -57,6 +53,10 @@
 		A1B2C3D4E5F60063 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D4E5F60064 /* PlauselyiOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlauselyiOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60065 /* PlauselyMacOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlauselyMacOSUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1B2C3D4E5F60082 /* LiveWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWiring.swift; sourceTree = "<group>"; };
+		B1B2C3D4E5F60083 /* LiveWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWiring.swift; sourceTree = "<group>"; };
+		B1B2C3D4E5F60090 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B1B2C3D4E5F60091 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -185,7 +185,7 @@
 				A1B2C3D4E5F60047 /* PBXTargetDependency */,
 				B1B2C3D4E5F60085 /* PBXTargetDependency */,
 			);
-			name = Plausely-iOS;
+			name = "Plausely-iOS";
 			packageProductDependencies = (
 				A1B2C3D4E5F60018 /* DashboardUI */,
 				B1B2C3D4E5F60084 /* PlausibleClient */,
@@ -208,7 +208,7 @@
 				A1B2C3D4E5F60048 /* PBXTargetDependency */,
 				B1B2C3D4E5F60086 /* PBXTargetDependency */,
 			);
-			name = Plausely-macOS;
+			name = "Plausely-macOS";
 			packageProductDependencies = (
 				A1B2C3D4E5F60018 /* DashboardUI */,
 				B1B2C3D4E5F60084 /* PlausibleClient */,
@@ -267,10 +267,11 @@
 			);
 			mainGroup = A1B2C3D4E5F60001;
 			packageReferences = (
-				A1B2C3D4E5F60017 /* XCRemoteSwiftPackageReference "PlauselyKit" */,
+				A1B2C3D4E5F60017 /* XCLocalSwiftPackageReference "Packages/PlauselyKit" */,
 			);
 			productRefGroup = A1B2C3D4E5F60005 /* Products */;
 			projectDirPath = "";
+			projectRoot = "";
 			targets = (
 				A1B2C3D4E5F60020 /* Plausely-iOS */,
 				A1B2C3D4E5F60021 /* Plausely-macOS */,
@@ -346,14 +347,6 @@
 			isa = PBXTargetDependency;
 			productRef = A1B2C3D4E5F60018 /* DashboardUI */;
 		};
-		B1B2C3D4E5F60085 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = B1B2C3D4E5F60084 /* PlausibleClient */;
-		};
-		B1B2C3D4E5F60086 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = B1B2C3D4E5F60084 /* PlausibleClient */;
-		};
 		A1B2C3D4E5F6006F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A1B2C3D4E5F60020 /* Plausely-iOS */;
@@ -363,6 +356,14 @@
 			isa = PBXTargetDependency;
 			target = A1B2C3D4E5F60021 /* Plausely-macOS */;
 			targetProxy = A1B2C3D4E5F60072 /* PBXContainerItemProxy */;
+		};
+		B1B2C3D4E5F60085 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = B1B2C3D4E5F60084 /* PlausibleClient */;
+		};
+		B1B2C3D4E5F60086 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = B1B2C3D4E5F60084 /* PlausibleClient */;
 		};
 /* End PBXTargetDependency section */
 
@@ -408,7 +409,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = QDLB526VNN;
+				DEVELOPMENT_TEAM = CY772VBW44;
 				INFOPLIST_FILE = Apps/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -482,7 +483,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Tests/PlauselyiOSUITests/Info.plist;
-				TEST_TARGET_NAME = Plausely-iOS;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -494,6 +494,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Plausely-iOS";
 			};
 			name = Debug;
 		};
@@ -502,7 +503,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Tests/PlauselyiOSUITests/Info.plist;
-				TEST_TARGET_NAME = Plausely-iOS;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -514,6 +514,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Plausely-iOS";
 			};
 			name = Release;
 		};
@@ -522,7 +523,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Tests/PlauselyMacOSUITests/Info.plist;
-				TEST_TARGET_NAME = Plausely-macOS;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -532,6 +532,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "Plausely-macOS";
 			};
 			name = Debug;
 		};
@@ -540,7 +541,6 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Tests/PlauselyMacOSUITests/Info.plist;
-				TEST_TARGET_NAME = Plausely-macOS;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -550,6 +550,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = "Plausely-macOS";
 			};
 			name = Release;
 		};
@@ -604,7 +605,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		A1B2C3D4E5F60017 /* XCRemoteSwiftPackageReference "PlauselyKit" */ = {
+		A1B2C3D4E5F60017 /* XCLocalSwiftPackageReference "Packages/PlauselyKit" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/PlauselyKit;
 		};

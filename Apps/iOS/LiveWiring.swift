@@ -450,6 +450,10 @@ struct LoginView: View {
             message = failure.localizedDescription
         } catch BridgeError.twoFactorRequired {
             message = "This account needs two-factor authentication, which sign-in here doesn't support yet."
+        } catch BridgeError.invalidCredentials {
+            message = "Wrong email or password."
+        } catch BridgeError.timedOut {
+            message = "The server took too long to respond. Try again."
         } catch ClientError.loginRequired {
             message = "Wrong email or password."
         } catch ClientError.siteUnavailable {
