@@ -129,7 +129,10 @@ public struct TopStatsGrid: View {
                     }
                 }
             }
-            VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(
+                columns: [GridItem(.flexible()), GridItem(.flexible())],
+                spacing: 8
+            ) {
                 ForEach(overview.stats, id: \.metric) { stat in
                     statRow(stat)
                 }
@@ -140,7 +143,7 @@ public struct TopStatsGrid: View {
     /// Full-width stat row: every tile shares one rail and every text block
     /// shares another, on both platforms and at any width.
     private func statRow(_ stat: TopStat) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 10) {
             MetricTile(metric: stat.metric)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -166,20 +169,9 @@ public struct TopStatsGrid: View {
                         .accessibilityIdentifier("overview-comparison-\(stat.metric.rawValue)")
                 }
             }
-            Spacer(minLength: 0)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(statAccessibilityLabel(stat))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("overview-stat-\(stat.metric.rawValue)")
-    }
-
-    private func statAccessibilityLabel(_ stat: TopStat) -> String {
-        var parts = [formatter.accessibleLabel(for: stat.value, as: stat.metric)]
-        if let change = changeText(stat.change) { parts.append(change) }
-        if let comparison = stat.comparisonValue {
-            parts.append("comparison \(formatter.string(for: comparison, as: stat.metric))")
-        }
-        return parts.joined(separator: ", ")
     }
 }
 

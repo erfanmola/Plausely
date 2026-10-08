@@ -98,17 +98,24 @@ final class SiteShellTests: XCTestCase {
     private func reveal(_ identifier: String, timeout: TimeInterval = 15) -> XCUIElement {
         let target = element(identifier)
         let deadline = Date().addingTimeInterval(timeout)
-        // One screen per beat: momentum swipes leapfrog tall sections, so
-        // settle between swipes and let cells materialize before polling.
+        // Short press-drags, never full swipes: fling momentum leapfrogs
+        // tall sections (overview + chart + table span screens), and
+        // List-virtualized rows only exist while on-screen, so a skipped
+        // section polls as missing forever.
+        let list = element("site-detail")
         while !target.exists, Date() < deadline {
-            app.swipeUp()
+            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+            from.press(forDuration: 0.1, thenDragTo: to)
             sleep(1)
         }
         // Cells rendered at the bottom edge (home-indicator zone) exist but
         // never receive taps until scrolled fully on-screen.
         let hittableDeadline = Date().addingTimeInterval(5)
         while target.exists, !target.isHittable, Date() < hittableDeadline {
-            app.swipeUp()
+            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
+            from.press(forDuration: 0.1, thenDragTo: to)
             sleep(1)
         }
         return target
