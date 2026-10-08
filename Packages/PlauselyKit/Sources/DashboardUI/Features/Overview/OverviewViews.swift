@@ -8,13 +8,31 @@ import SwiftUI
 public enum MockOverviewProviders {
     public static var overview: ReportModel<Overview>.Loader {
         { query, today in
+            // Comparison mode synthesizes server-shaped previous values and
+            // deltas (mirroring the upstream Google 2-vs-0 → +100% shape),
+            // so badges, colors, and previous/comparison rows render in
+            // mock mode exactly like live ones.
+            let comparing = query.comparison != .off
+            func stat(
+                _ metric: MetricID, _ name: String, _ value: MetricValue,
+                change: Int? = nil, comparison: MetricValue? = nil
+            ) -> TopStat {
+                TopStat(
+                    metric: metric, name: name, value: value,
+                    comparisonValue: comparing ? comparison : nil,
+                    change: comparing ? change : nil
+                )
+            }
             let stats = [
-                TopStat(metric: .visitors, name: "Unique visitors", value: .count(1600)),
-                TopStat(metric: .visits, name: "Total visits", value: .count(1600)),
-                TopStat(metric: .pageviews, name: "Total pageviews", value: .count(1400)),
-                TopStat(metric: .viewsPerVisit, name: "Views per visit", value: .decimal(Decimal(string: "0.88")!)),
-                TopStat(metric: .bounceRate, name: "Bounce rate", value: .count(88)),
-                TopStat(metric: .visitDuration, name: "Visit duration", value: .count(0)),
+                stat(.visitors, "Unique visitors", .count(1600), change: 12, comparison: .count(1428)),
+                stat(.visits, "Total visits", .count(1600), change: -5, comparison: .count(1680)),
+                stat(.pageviews, "Total pageviews", .count(1400), change: 0, comparison: .count(1400)),
+                stat(
+                    .viewsPerVisit, "Views per visit", .decimal(Decimal(string: "0.88")!),
+                    change: 3, comparison: .decimal(Decimal(string: "0.85")!)
+                ),
+                stat(.bounceRate, "Bounce rate", .count(88), change: -2, comparison: .count(90)),
+                stat(.visitDuration, "Visit duration", .count(0), change: 0, comparison: .count(0)),
             ]
             let id = try QueryID.compute(for: query, today: today)
             return ReportEnvelope(queryID: id, value: Overview(stats: stats), retrievedAt: today)
@@ -113,14 +131,16 @@ public struct TopStatsGrid: View {
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 150))], spacing: 8) {
                 ForEach(overview.stats, id: \.metric) { stat in
-                    statCard(stat)
+                    statRow(stat)
                 }
             }
         }
     }
 
-    private func statCard(_ stat: TopStat) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+    /// Full-width stat row: every tile shares one rail and every text block
+    /// shares another, on both platforms and at any width.
+    private func statRow(_ stat: TopStat) -> some View {
+        HStack(alignment: .top, spacing: 12) {
             MetricTile(metric: stat.metric)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
@@ -146,6 +166,7 @@ public struct TopStatsGrid: View {
                         .accessibilityIdentifier("overview-comparison-\(stat.metric.rawValue)")
                 }
             }
+            Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(statAccessibilityLabel(stat))
