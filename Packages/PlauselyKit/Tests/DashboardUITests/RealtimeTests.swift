@@ -7,7 +7,14 @@ import Testing
 private actor CallLog {
     var calls: [(AccountID, SiteID)] = []
     var fail = false
-    func record(account: AccountID, site: SiteID) throws -> Int {
+    /// Manual fetch gate: each fetch blocks until released, so polling
+    /// loops stay fully deterministic with no sleep-based races.
+    var waiters: [CheckedContinuation<Void, Never>] = []
+    var gated = false
+    func record(account: AccountID, site: SiteID) async throws -> Int {
+        if gated {
+            await withCheckedContinuation { waiters.append($0) }
+        }
         calls.append((account, site))
         if fail { throw StubError.unavailable }
         return calls.count * 10
@@ -15,6 +22,12 @@ private actor CallLog {
 
     func callCount() -> Int { calls.count }
     func setFail(_ value: Bool) { fail = value }
+    func setGated(_ value: Bool) { gated = value }
+    func releaseOne() {
+        if !waiters.isEmpty { waiters.removeFirst().resume() }
+    }
+
+    func waiterCount() -> Int { waiters.count }
 }
 
 private enum StubError: Error {
@@ -40,18 +53,35 @@ struct RealtimeTests {
         while model.count == nil, Date() < deadline {
             try await Task.sleep(nanoseconds: 5_000_000)
         }
-        #expect(model.count == 10)
+        #expect(model.count != nil)
         #expect(model.errorMessage == nil)
 
-        // Same identity while running is a no-op for restarts; the loop
-        // keeps polling on its cadence.
-        let before = await log.callCount()
-        model.start(account: account, site: site, loader: loader)
-        #expect(await log.callCount() == before)
-        while await log.callCount() < before + 2, Date() < deadline {
+        // Same identity restarts never spawn a second loop. Fresh gated
+        // model: every fetch blocks until released, so loop counting is
+        // exact with no sleep-based races.
+        let log2 = CallLog()
+        await log2.setGated(true)
+        let loader2: RealtimeModel.CountLoader = { account, site in
+            try await log2.record(account: account, site: site)
+        }
+        let model2 = RealtimeModel(pollInterval: 0.02)
+        model2.start(account: account, site: site, loader: loader2)
+        while await log2.waiterCount() == 0, Date() < deadline {
             try await Task.sleep(nanoseconds: 5_000_000)
         }
-        #expect(model.count == (before + 2) * 10)
+        model2.start(account: account, site: site, loader: loader2)
+        let calm = Date().addingTimeInterval(0.2)
+        while Date() < calm {
+            #expect(await log2.waiterCount() <= 1)
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        await log2.releaseOne()
+        while await log2.callCount() == 0, Date() < deadline {
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        #expect(await log2.callCount() == 1)
+        #expect(model2.count == 10)
+        model2.stop()
 
         // A new site resets the count so headcounts never cross sites.
         let other = SiteID(domain: "blog.example")
