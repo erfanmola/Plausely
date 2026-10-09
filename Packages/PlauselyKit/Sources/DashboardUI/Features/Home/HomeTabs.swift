@@ -12,8 +12,8 @@ struct HomeOverviewTab: View {
         ScrollView {
             VStack(spacing: 16) {
                 HomeHeaderPills(selection: selection, queryModel: queryModel)
-                HomeHeroView(model: realtimeModel)
                 if let queryModel {
+                    HomeHeroView(model: realtimeModel)
                     // Reports need a runnable effective query; controls
                     // stay mounted on rejected combos so the typed error
                     // (e.g. realtime comparisons) remains visible and
@@ -30,7 +30,7 @@ struct HomeOverviewTab: View {
                                 state: overviewModel.dashboard.series.state,
                                 onRetry: { Task { await overviewModel.refresh() } },
                                 content: {
-                                    SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric)
+                                    SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric, period: effective.period, timeZone: effective.timeZone)
                                 }
                             )
                         }
@@ -45,11 +45,8 @@ struct HomeOverviewTab: View {
                     }
                     Spacer(minLength: 90)
                 } else {
-                    HomeCard {
-                        Text("Select a site to inspect it.")
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("home-empty")
-                    }
+                    // No site yet: the full picker beats an empty card.
+                    SitePickerView(selection: selection)
                 }
             }
             .padding(.horizontal, 16)

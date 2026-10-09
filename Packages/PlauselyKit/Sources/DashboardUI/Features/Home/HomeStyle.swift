@@ -110,6 +110,20 @@ struct HomeBarRow: View {
     }
 }
 
+/// Capsule control treatment: Liquid Glass where the floor allows it,
+/// the card capsule before that. Content supplies its own padding; the
+/// shape hugs it either way.
+extension View {
+    @ViewBuilder
+    func glassCapsule() -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            self.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            self.background(HomeStyle.card, in: Capsule(style: .continuous))
+        }
+    }
+}
+
 /// Bold card title used by every home family card.
 struct HomeCardTitle: View {
     let title: String

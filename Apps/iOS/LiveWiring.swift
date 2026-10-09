@@ -213,6 +213,11 @@ actor LiveHub {
         bootstraps[account.rawValue.uuidString + "/" + domain]?.timeZone
     }
 
+    /// Bootstrap interval map for one site (nil until discovered).
+    func intervals(account: AccountID, domain: String) async -> IntervalPolicy? {
+        bootstraps[account.rawValue.uuidString + "/" + domain]?.snapshot.intervals
+    }
+
     func currentVisitors(accountID: AccountID, domain: String) async throws -> Int {
         try await adapterFor(accountID: accountID)
             .currentVisitors(account: accountID, site: SiteID(domain: domain))
@@ -521,6 +526,9 @@ struct LiveRootView: View {
                             ])
                             queryModel.refresh()
                         }
+                    },
+                    resolvePolicy: { [hub] query in
+                        await hub.intervals(account: query.accountID, domain: query.siteID.domain)
                     }
                 )
             }

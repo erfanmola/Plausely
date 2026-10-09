@@ -1,10 +1,12 @@
 import AnalyticsCore
 import SwiftUI
 
-/// Live headcount hero: giant count over a green dot plus words (never
-/// color alone). Morphs on every poll with a soft haptic tick.
+/// Live headcount hero: giant count beside a pulsing green presence dot,
+/// words underneath (never color alone). Morphs on every poll with a soft
+/// haptic tick; the pulse rests under Reduce Motion.
 public struct HomeHeroView: View {
     @Bindable private var model: RealtimeModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let formatter = MetricFormatter()
 
     public init(model: RealtimeModel) {
@@ -13,21 +15,23 @@ public struct HomeHeroView: View {
 
     public var body: some View {
         VStack(spacing: 6) {
-            if let count = model.count {
-                Text(formatter.string(for: .count(Int64(count)), as: .visitors))
-                    .font(.system(size: 64, weight: .bold))
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: count)
-                    .accessibilityIdentifier("home-hero-count")
-            } else {
-                ProgressView()
-                    .accessibilityIdentifier("home-hero-loading")
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                LivePulseDot(active: model.count != nil, reduceMotion: reduceMotion)
+                if let count = model.count {
+                    Text(formatter.string(for: .count(Int64(count)), as: .visitors))
+                        .font(.system(size: 64, weight: .bold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(.snappy, value: count)
+                        .accessibilityIdentifier("home-hero-count")
+                } else {
+                    ProgressView()
+                        .accessibilityIdentifier("home-hero-loading")
+                }
             }
-            Label("current visitors", systemImage: "circle.fill")
+            Text("current visitors")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-                .symbolRenderingMode(.multicolor)
                 .accessibilityIdentifier("home-hero-label")
         }
         .frame(maxWidth: .infinity)
@@ -35,6 +39,36 @@ public struct HomeHeroView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-hero")
         .sensoryFeedback(.selection, trigger: model.count)
+    }
+}
+
+/// Presence halo: green core with an expanding ring while live, plain
+/// gray while loading. Decorative; the count carries the meaning.
+struct LivePulseDot: View {
+    var active: Bool
+    var reduceMotion: Bool
+    @State private var ping = false
+
+    var body: some View {
+        ZStack {
+            if active, !reduceMotion {
+                Circle()
+                    .fill(.green.opacity(0.4))
+                    .frame(width: 14, height: 14)
+                    .scaleEffect(ping ? 2.1 : 0.7)
+                    .opacity(ping ? 0 : 0.9)
+                    .onAppear {
+                        withAnimation(.easeOut(duration: 1.6).repeatForever(autoreverses: false)) {
+                            ping = true
+                        }
+                    }
+            }
+            Circle()
+                .fill(active ? .green : .gray)
+                .frame(width: 12, height: 12)
+        }
+        .frame(width: 30, height: 30)
+        .accessibilityHidden(true)
     }
 }
 

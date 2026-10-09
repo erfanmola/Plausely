@@ -34,6 +34,27 @@ public enum MockQueryProviders {
             ]
         }
     }
+
+    /// Deterministic bootstrap interval map for UI tests and previews.
+    /// Shape mirrors the dashboard's `validIntervalsByPeriod` (lists in
+    /// dashboard-preference order); live maps arrive per site from the
+    /// real bootstrap transport.
+    public static var intervals: IntervalPolicy {
+        IntervalPolicy(validByPeriod: [
+            "realtime": [.minute],
+            "day": [.minute, .hour],
+            "7d": [.hour, .day],
+            "28d": [.day, .week],
+            "30d": [.day, .week],
+            "91d": [.day, .week],
+            "month": [.day, .week],
+            "year": [.day, .week, .month],
+            "6mo": [.day, .week, .month],
+            "12mo": [.day, .week, .month],
+            "all": [.week, .month],
+            "custom": [.day, .week, .month],
+        ])
+    }
 }
 
 /// Active filters, locked scope, and the read-only segment list. Clause

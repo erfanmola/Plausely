@@ -96,7 +96,7 @@ public struct OverviewContentView: View {
             ReportStateView(state: model.dashboard.series.state, onRetry: {
                 Task { await model.refresh() }
             }, content: {
-                SeriesChartView(series: $0.value, metric: model.selectedMetric)
+                SeriesChartView(series: $0.value, metric: model.selectedMetric, period: query.period, timeZone: query.timeZone)
             })
         }
         .task(id: query) {
@@ -191,6 +191,9 @@ public struct MetricPickerView: View {
             }
         } label: {
             Label(MetricID.descriptor(for: model.selectedMetric).displayName, systemImage: "chart.line.uptrend.xyaxis")
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .glassCapsule()
         }
         .accessibilityIdentifier("metric-picker")
         .sensoryFeedback(.selection, trigger: model.selectedMetric)
@@ -203,15 +206,23 @@ public struct MetricPickerView: View {
 public struct SeriesChartView: View {
     private let series: TimeSeries
     private let metric: MetricID
+    private let period: Period
+    private let timeZone: TimeZone
     @State private var selection: String?
     private let formatter = MetricFormatter()
 
-    public init(series: TimeSeries, metric: MetricID) {
+    public init(series: TimeSeries, metric: MetricID, period: Period, timeZone: TimeZone) {
         self.series = series
         self.metric = metric
+        self.period = period
+        self.timeZone = timeZone
     }
 
     private var points: [SeriesPoint] { SeriesPoints.build(from: series) }
+
+    private func displayLabel(_ raw: String) -> String {
+        BucketLabels.display(raw, for: period, in: timeZone)
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -253,9 +264,28 @@ public struct SeriesChartView: View {
                 if let selection {
                     RuleMark(x: .value("Selected", selection))
                         .foregroundStyle(.secondary)
+                    if let point = points.first(where: { $0.label == selection }),
+                       let value = point.value {
+                        PointMark(x: .value("Selected", selection), y: .value("Value", value))
+                            .foregroundStyle(.white)
+                            .symbolSize(220)
+                        PointMark(x: .value("Selected", selection), y: .value("Value", value))
+                            .foregroundStyle(.blue)
+                            .symbolSize(110)
+                    }
                 }
             }
             .chartXSelection(value: $selection)
+            .chartXAxis {
+                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let raw = value.as(String.self) {
+                            Text(displayLabel(raw))
+                        }
+                    }
+                }
+            }
             .chartYAxis {
                 AxisMarks(preset: .aligned, position: .leading, values: .automatic(desiredCount: 4))
             }
@@ -280,12 +310,12 @@ public struct SeriesChartView: View {
                     .accessibilityIdentifier("series-table")
                 ForEach(points, id: \.index) { point in
                     HStack {
-                        Text(point.label)
+                        Text(displayLabel(point.label))
                         Spacer()
                         Text(cellText(point))
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(point.label), \(cellText(point))")
+                    .accessibilityLabel("\(displayLabel(point.label)), \(cellText(point))")
                 }
             }
         }
@@ -320,7 +350,7 @@ public struct SeriesChartView: View {
         guard let selection,
               let point = points.first(where: { $0.label == selection })
         else { return nil }
-        var text = "\(point.label): \(cellText(point))"
+        var text = "\(displayLabel(point.label)): \(cellText(point))"
         if let rawComparison = point.rawComparison {
             text += " (comparison \(formatter.string(for: rawComparison, as: metric)))"
         }

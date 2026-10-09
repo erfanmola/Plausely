@@ -258,3 +258,28 @@ struct QueryControlsTests {
         #expect(fastResults.map(\.value) == ["fast"])
     }
 }
+
+@Suite("query interval conformance")
+@MainActor
+struct QueryIntervalTests {
+    @Test("period change re-derives the interval from the site policy")
+    func conformsOnPeriodChange() throws {
+        let model = QueryModel(base: baseQuery(), intervalPolicy: MockQueryProviders.intervals)
+        #expect(try #require(model.effective).interval == .day)
+        model.setPeriod(.day)
+        #expect(try #require(model.effective).interval == .hour)
+        model.setPeriod(.realtime)
+        #expect(try #require(model.effective).interval == .minute)
+        model.setPeriod(.months12)
+        #expect(try #require(model.effective).interval == .month)
+        model.setPeriod(.days28)
+        #expect(try #require(model.effective).interval == .day)
+    }
+
+    @Test("no policy keeps the legacy sticky interval")
+    func legacyWithoutPolicy() throws {
+        let model = QueryModel(base: baseQuery())
+        model.setPeriod(.day)
+        #expect(try #require(model.effective).interval == .day)
+    }
+}

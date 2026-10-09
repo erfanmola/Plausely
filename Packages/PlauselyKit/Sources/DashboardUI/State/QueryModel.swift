@@ -68,6 +68,10 @@ public final class QueryModel {
     public var comparison: Comparison = .off
     public var matchDayOfWeek = true
     public var includeImported = false
+    /// Chart interval, conformed to the site's bootstrap policy on every
+    /// refresh: a stale interval from a previous period never reaches the
+    /// wire (the dashboard re-derives it the same way on period change).
+    public private(set) var interval: ChartInterval
     /// User-editable clauses. Locked clauses ride `locked`, never this list.
     public private(set) var clauses: [FilterClause] = []
     public var locked = FilterExpression() {
@@ -81,6 +85,7 @@ public final class QueryModel {
 
     private let suggestions: SuggestionProvider?
     private let segmentList: SegmentListProvider?
+    private let intervalPolicy: IntervalPolicy?
     private let clock: @Sendable () -> Date
     private var appliedSegmentClauses: [FilterClause] = []
     private var suggestionGeneration: UInt64 = 0
@@ -89,6 +94,7 @@ public final class QueryModel {
         base: DashboardQuery,
         suggestions: SuggestionProvider? = nil,
         segmentList: SegmentListProvider? = nil,
+        intervalPolicy: IntervalPolicy? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.base = base
@@ -97,9 +103,11 @@ public final class QueryModel {
         self.comparison = base.comparison
         self.matchDayOfWeek = base.matchDayOfWeek
         self.includeImported = base.includeImported
+        self.interval = base.interval
         self.clauses = base.filters.clauses
         self.suggestions = suggestions
         self.segmentList = segmentList
+        self.intervalPolicy = intervalPolicy
         self.clock = clock
         if segmentList != nil { segmentsState = .loading }
         refresh()
@@ -242,6 +250,9 @@ public final class QueryModel {
     // MARK: - Validation
 
     public func refresh() {
+        if let policy = intervalPolicy {
+            interval = policy.currentInterval(interval, for: period, periodDate: periodDate, timeZone: base.timeZone, today: clock())
+        }
         do {
             effective = try build()
             error = nil
@@ -266,7 +277,7 @@ public final class QueryModel {
             matchDayOfWeek: matchDayOfWeek,
             filters: FilterExpression(clauses: merged),
             includeImported: includeImported,
-            interval: base.interval,
+            interval: interval,
             selectedMetric: base.selectedMetric,
             timeZone: base.timeZone
         )

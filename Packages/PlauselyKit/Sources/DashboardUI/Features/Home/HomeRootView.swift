@@ -42,6 +42,10 @@ public struct HomeRootView: View {
     /// Live-only lock application (shared-link scope) on the fresh query
     /// model, before any report model builds from it.
     private let applyLock: (@MainActor (QueryModel) async -> Void)?
+    /// Site bootstrap interval map for the query's site. The query model
+    /// re-derives the chart interval from it on every period change, so
+    /// a stale bootstrap interval never reaches the wire.
+    private let resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)?
     @State private var generation: UInt64 = 0
 
     public init(
@@ -55,7 +59,8 @@ public struct HomeRootView: View {
         onSignOut: (@MainActor (AccountRef) async throws -> Void)? = nil,
         onExport: ExportButton.Exporter? = nil,
         resolveBase: (@MainActor (DashboardQuery) async -> DashboardQuery)? = nil,
-        applyLock: (@MainActor (QueryModel) async -> Void)? = nil
+        applyLock: (@MainActor (QueryModel) async -> Void)? = nil,
+        resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)? = nil
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -69,6 +74,7 @@ public struct HomeRootView: View {
         self.onExport = onExport
         self.resolveBase = resolveBase
         self.applyLock = applyLock
+        self.resolvePolicy = resolvePolicy
     }
 
     public var body: some View {
@@ -153,7 +159,8 @@ public struct HomeRootView: View {
         guard let query else { return }
         Task {
             let base = await resolveBase?(query) ?? query
-            let queryModel = QueryModel(base: base, suggestions: suggestions, segmentList: segmentList)
+            let policy = await resolvePolicy?(base)
+            let queryModel = QueryModel(base: base, suggestions: suggestions, segmentList: segmentList, intervalPolicy: policy)
             await applyLock?(queryModel)
             guard current == generation else { return }
             let effective = queryModel.effective ?? base

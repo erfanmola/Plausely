@@ -61,17 +61,26 @@ final class SiteShellTests: XCTestCase {
     /// cycle — under load a tap can land mid-layout-shift and silently
     /// miss, and sites arrive asynchronously after launch. Blind toggles
     /// converge: a tap on an open menu closes it, the next tap reopens.
-    private func chooseSite(_ domain: String, expectPill: String? = nil, expectChangeFrom: String? = nil) {
+    private func chooseSite(_ domain: String, expectPill: String? = nil, expectChangeFrom: String? = nil, expectHero: Bool = true) {
         let deadline = Date().addingTimeInterval(90)
         while Date() < deadline {
             pillTap()
             if peekOption(domain, timeout: 8) != nil {
                 selectOption(domain)
-                sleep(2)
-                let pillLabel = element("home-site").label
-                let pillOk = expectPill.map { pillLabel.contains($0) } ?? true
-                let changedOk = expectChangeFrom.map { pillLabel != $0 } ?? true
-                if pillOk, changedOk, element("home-hero-count").exists { return }
+                // Settle for the async selection to land (account
+                // switches clear the site first, so the hero may lag the
+                // pill — or never come when no site stays selected).
+                let settled = Date().addingTimeInterval(10)
+                var ok = false
+                while Date() < settled {
+                    let pillLabel = element("home-site").label
+                    let pillOk = expectPill.map { pillLabel.contains($0) } ?? true
+                    let changedOk = expectChangeFrom.map { pillLabel != $0 } ?? true
+                    let heroOk = !expectHero || element("home-hero-count").exists
+                    if pillOk, changedOk, heroOk { ok = true; break }
+                    sleep(1)
+                }
+                if ok { return }
                 // Tapped but state did not settle: close the menu for a
                 // clean retry.
                 pillTap()
@@ -290,8 +299,9 @@ final class SiteShellTests: XCTestCase {
         chooseSite(longDomain, expectPill: longDomain)
         XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 15))
         // Instance switching re-targets the site menu: any viewer site
-        // proves the switch, and the old account's rows vanish.
-        chooseSite("viewer@example.com", expectChangeFrom: longDomain)
+        // proves the switch (account switches clear the site, so no
+        // hero is expected), and the old account's rows vanish.
+        chooseSite("viewer@example.com", expectChangeFrom: longDomain, expectHero: false)
         XCTAssertTrue(element("home-site").waitForExistence(timeout: 15))
         scrollToTop()
         pillTap()
@@ -601,6 +611,7 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("settings-account-owner@example.com").waitForExistence(timeout: 15))
     }
 }
+
 
 
 

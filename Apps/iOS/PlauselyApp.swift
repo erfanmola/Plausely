@@ -31,7 +31,8 @@ struct PlauselyApp: App {
                     suggestions: MockQueryProviders.suggestions,
                     segmentList: MockQueryProviders.segments,
                     realtimeLoader: MockRealtimeProviders.count,
-                    onExport: { _ in (filename: "mock-export.zip", data: MockExportProviders.payload) }
+                    onExport: { _ in (filename: "mock-export.zip", data: MockExportProviders.payload) },
+                    resolvePolicy: { _ in MockQueryProviders.intervals }
                 )
             } else {
                 LiveRootView()

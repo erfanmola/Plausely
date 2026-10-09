@@ -42,7 +42,7 @@ struct HomeHeaderPills: View {
                 .lineLimit(1)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .background(HomeStyle.card, in: Capsule(style: .continuous))
+                .glassCapsule()
         }
         .accessibilityIdentifier("home-site")
     }
@@ -73,7 +73,7 @@ struct HomePeriodPill: View {
                 .lineLimit(1)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .background(HomeStyle.card, in: Capsule(style: .continuous))
+                .glassCapsule()
         }
         .accessibilityIdentifier("home-period")
     }
@@ -145,6 +145,9 @@ struct HomeOptionsView: View {
             Button("Custom") { model.setComparison(HomeOptionsView.compareDefault(for: model)) }
         } label: {
             Text(comparisonName)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .glassCapsule()
         }
         .accessibilityIdentifier("comparison-picker")
     }

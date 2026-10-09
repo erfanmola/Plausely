@@ -90,4 +90,74 @@ public struct IntervalPolicy: Hashable, Sendable {
     public func isValid(_ interval: ChartInterval, for period: Period) -> Bool {
         validByPeriod[period.wireValue]?.contains(interval) ?? false
     }
+
+    /// Dashboard-faithful current interval (mirrors `interval-picker.tsx`
+    /// `getCurrentInterval`): keep `current` when valid for the period;
+    /// otherwise fall back to the dashboard default. The bootstrap map
+    /// stays authoritative for validity; the default table only picks
+    /// among valid entries.
+    public func currentInterval(
+        _ current: ChartInterval,
+        for period: Period,
+        periodDate: Date? = nil,
+        timeZone: TimeZone,
+        today: Date = Date()
+    ) -> ChartInterval {
+        let options = validIntervals(for: period, periodDate: periodDate, timeZone: timeZone, today: today)
+        if options.contains(current) { return current }
+        if let fallback = defaultInterval(for: period, periodDate: periodDate, timeZone: timeZone, today: today),
+           options.contains(fallback) { return fallback }
+        return options.first ?? current
+    }
+
+    /// Valid intervals for a period: the custom-range rule, else the
+    /// bootstrap map entry.
+    public func validIntervals(
+        for period: Period,
+        periodDate: Date? = nil,
+        timeZone: TimeZone,
+        today: Date = Date()
+    ) -> [ChartInterval] {
+        if case .custom(let from, let to) = period {
+            return customOptions(from: from, to: to, timeZone: timeZone)
+        }
+        return validByPeriod[period.wireValue] ?? []
+    }
+
+    /// Dashboard default per period (`defaultByPeriod` + custom rule),
+    /// nil when the map alone decides (first valid wins).
+    public func defaultInterval(
+        for period: Period,
+        periodDate: Date? = nil,
+        timeZone: TimeZone,
+        today: Date = Date()
+    ) -> ChartInterval? {
+        switch period {
+        case .realtime: return .minute
+        case .day: return .hour
+        case .days7: return .day
+        case .months6, .months12, .year: return .month
+        case .custom(let from, let to):
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = timeZone
+            let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).day ?? 0
+            let months = calendar.dateComponents([.month], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).month ?? 0
+            if days < 30 { return .day }
+            if months < 6 { return .week }
+            return .month
+        default: return nil
+        }
+    }
+
+    /// Custom-range options by span (`validIntervals` custom branch).
+    private func customOptions(from: Date, to: Date, timeZone: TimeZone) -> [ChartInterval] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).day ?? 0
+        let months = calendar.dateComponents([.month], from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to)).month ?? 0
+        if days < 7 { return [.day] }
+        if months < 1 { return [.day, .week] }
+        if months < 12 { return [.day, .week, .month] }
+        return [.week, .month]
+    }
 }

@@ -118,7 +118,8 @@ struct MacRootView: View {
             QueryModel(
                 base: $0,
                 suggestions: mockProviders ? MockQueryProviders.suggestions : nil,
-                segmentList: mockProviders ? MockQueryProviders.segments : nil
+                segmentList: mockProviders ? MockQueryProviders.segments : nil,
+                intervalPolicy: mockProviders ? MockQueryProviders.intervals : nil
             )
         }
         // Overview loaders come from the real service with the
