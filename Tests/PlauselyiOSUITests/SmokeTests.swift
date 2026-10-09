@@ -111,15 +111,16 @@ final class SiteShellTests: XCTestCase {
     }
 
     private func tab(_ name: String) {
-        // The floating bar sits outside the scroll content, so scrolling
-        // can never move it: tap directly, then prove the pane switched.
-        // A tap that lands mid-layout-shift silently misses, so retry
-        // until the pane answers.
+        // Native tab bar buttons carry titles, not our identifiers: match
+        // the visible title, tap natively (the bar never moves), then
+        // prove the pane switched. Capitalized raw values equal the
+        // tabItem titles for all four tabs.
+        let title = name.capitalized
         let deadline = Date().addingTimeInterval(30)
         while !element("home-pane-\(name)").exists, Date() < deadline {
-            let button = element("home-tab-\(name)")
+            let button = app.tabBars.firstMatch.buttons[title].firstMatch
             XCTAssertTrue(button.waitForExistence(timeout: 10))
-            button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            button.tap()
             sleep(2)
         }
         XCTAssertTrue(element("home-pane-\(name)").waitForExistence(timeout: 5))

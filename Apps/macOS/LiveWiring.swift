@@ -353,12 +353,7 @@ struct LoginView: View {
                 VStack(spacing: 8) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .fill(
-                                LinearGradient(
-                                    colors: [.indigo, .blue],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                )
-                            )
+                            .fill(Color.accentColor)
                             .frame(width: 76, height: 76)
                         Image(systemName: "chart.bar.fill")
                             .font(.largeTitle)

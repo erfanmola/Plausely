@@ -20,7 +20,7 @@ enum HomeStyle {
 #endif
     }
 
-    static var barFill: Color { .indigo.opacity(0.12) }
+    static var barFill: Color { .accentColor.opacity(0.15) }
     static var corner: CGFloat { 22 }
 }
 

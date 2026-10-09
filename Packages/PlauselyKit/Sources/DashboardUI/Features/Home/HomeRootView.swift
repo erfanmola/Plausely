@@ -1,9 +1,10 @@
 import AnalyticsCore
 import SwiftUI
 
-/// Home root: pill header, four tabs, floating pill bar. Owns the
-/// window's selection and every report model; loaders arrive injected so
-/// mock and live share every pixel on both platforms.
+/// Home root: pill header plus four tabs in the native tab bar (Liquid
+/// Glass on current iOS, classic bar on older floors, native tabs on
+/// macOS). Owns the window's selection and every report model; loaders
+/// arrive injected so mock and live share every pixel on both platforms.
 public struct HomeRootView: View {
     public enum Tab: String, Hashable, CaseIterable {
         case overview, breakdowns, goals, settings
@@ -71,41 +72,36 @@ public struct HomeRootView: View {
     }
 
     public var body: some View {
-        ZStack(alignment: .bottom) {
-            Group {
-                switch selectedTab {
-                case .overview:
-                    HomeOverviewTab(
-                        selection: selection, queryModel: queryModel,
-                        overviewModel: overviewModel, realtimeModel: realtimeModel
-                    )
-                case .breakdowns:
-                    HomeBreakdownsTab(
-                        queryModel: queryModel,
-                        channelsModel: channelsModel, sourcesModel: sourcesModel,
-                        pagesModel: pagesModel, entryModel: entryModel,
-                        exitModel: exitModel, countriesModel: countriesModel,
-                        browsersModel: browsersModel, screensModel: screensModel,
-                        systemsModel: systemsModel,
-                        childFactory: childFactory,
-                        onFilter: filterAction,
-                        onExport: onExport
-                    )
-                case .goals:
-                    HomeGoalsTab(
-                        queryModel: queryModel, goalsModel: goalsModel,
-                        childFactory: childFactory, onFilter: filterAction
-                    )
-                case .settings:
-                    HomeSettingsTab(selection: selection, onSignOut: onSignOut)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            PillTabBar(selected: $selectedTab)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+        TabView(selection: $selectedTab) {
+            HomeOverviewTab(
+                selection: selection, queryModel: queryModel,
+                overviewModel: overviewModel, realtimeModel: realtimeModel
+            )
+            .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis") }
+            .tag(Tab.overview)
+            HomeBreakdownsTab(
+                queryModel: queryModel,
+                channelsModel: channelsModel, sourcesModel: sourcesModel,
+                pagesModel: pagesModel, entryModel: entryModel,
+                exitModel: exitModel, countriesModel: countriesModel,
+                browsersModel: browsersModel, screensModel: screensModel,
+                systemsModel: systemsModel,
+                childFactory: childFactory,
+                onFilter: filterAction,
+                onExport: onExport
+            )
+            .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle") }
+            .tag(Tab.breakdowns)
+            HomeGoalsTab(
+                queryModel: queryModel, goalsModel: goalsModel,
+                childFactory: childFactory, onFilter: filterAction
+            )
+            .tabItem { Label("Goals", systemImage: "target") }
+            .tag(Tab.goals)
+            HomeSettingsTab(selection: selection, onSignOut: onSignOut)
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(Tab.settings)
         }
-        .background(HomeStyle.page.ignoresSafeArea())
         .onChange(of: selection.query) { _, query in
             rebuildModels(for: query)
         }
@@ -209,58 +205,3 @@ public struct HomeRootView: View {
     }
 }
 
-/// Floating pill tab bar: four destinations, selected pill glides with a
-/// matched geometry effect and ticks haptically.
-struct PillTabBar: View {
-    @Binding var selected: HomeRootView.Tab
-    @Namespace private var pill
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(HomeRootView.Tab.allCases, id: \.self) { tab in
-                Button {
-                    selected = tab
-                } label: {
-                    VStack(spacing: 2) {
-                        Image(systemName: symbol(for: tab))
-                            .font(.title3)
-                        Text(title(for: tab))
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(selected == tab ? .indigo : .primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background {
-                        if selected == tab {
-                            Capsule(style: .continuous)
-                                .fill(Color.indigo.opacity(0.12))
-                                .matchedGeometryEffect(id: "pill", in: pill)
-                        }
-                    }
-                }
-                .accessibilityIdentifier("home-tab-\(tab.rawValue)")
-            }
-        }
-        .padding(8)
-        .background(HomeStyle.card, in: Capsule(style: .continuous))
-        .sensoryFeedback(.selection, trigger: selected)
-    }
-
-    private func symbol(for tab: HomeRootView.Tab) -> String {
-        switch tab {
-        case .overview: return "chart.line.uptrend.xyaxis"
-        case .breakdowns: return "list.bullet.rectangle"
-        case .goals: return "target"
-        case .settings: return "gearshape.fill"
-        }
-    }
-
-    private func title(for tab: HomeRootView.Tab) -> String {
-        switch tab {
-        case .overview: return "Overview"
-        case .breakdowns: return "Breakdowns"
-        case .goals: return "Goals"
-        case .settings: return "Settings"
-        }
-    }
-}
