@@ -129,10 +129,7 @@ public struct TopStatsGrid: View {
                     }
                 }
             }
-            LazyVGrid(
-                columns: [GridItem(.flexible()), GridItem(.flexible())],
-                spacing: 8
-            ) {
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(overview.stats, id: \.metric) { stat in
                     statRow(stat)
                 }

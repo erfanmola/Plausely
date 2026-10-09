@@ -450,6 +450,10 @@ struct LoginView: View {
             message = failure.localizedDescription
         } catch BridgeError.twoFactorRequired {
             message = "This account needs two-factor authentication, which sign-in here doesn't support yet."
+        } catch BridgeError.invalidCredentials {
+            message = "Wrong email or password."
+        } catch BridgeError.timedOut {
+            message = "The server took too long to respond. Try again."
         } catch ClientError.loginRequired {
             message = "Wrong email or password."
         } catch ClientError.siteUnavailable {
@@ -471,21 +475,6 @@ struct LiveRootView: View {
     @State private var selection: SiteSelectionModel
     @State private var accounts: [AccountRef] = []
     @State private var accountsLoaded = false
-    @State private var queryModel: QueryModel?
-    @State private var overviewModel: OverviewModel?
-    @State private var channelsModel: BreakdownModel?
-    @State private var sourcesModel: BreakdownModel?
-    @State private var pagesModel: BreakdownModel?
-    @State private var entryModel: BreakdownModel?
-    @State private var exitModel: BreakdownModel?
-    @State private var countriesModel: BreakdownModel?
-    @State private var browsersModel: BreakdownModel?
-    @State private var screensModel: BreakdownModel?
-    @State private var systemsModel: BreakdownModel?
-    @State private var goalsModel: BreakdownModel?
-    @State private var realtimeModel = RealtimeModel()
-    @State private var overviewOverviewCache = ReportCache<Overview>()
-    @State private var overviewSeriesCache = ReportCache<TimeSeries>()
     @State private var signOutError: String?
     @State private var showingSignOutError = false
 
@@ -508,47 +497,37 @@ struct LiveRootView: View {
                     }
                 }
             } else {
-                NavigationSplitView {
-                    SiteSidebarView(model: selection)
-                } detail: {
-                    SiteDetailView(
-                        site: selection.selectedSite,
-                        query: selection.query,
-                        queryModel: queryModel,
-                        overviewModel: overviewModel,
-                        channelsModel: channelsModel,
-                        sourcesModel: sourcesModel,
-                        pagesModel: pagesModel,
-                        entryModel: entryModel,
-                        exitModel: exitModel,
-                        countriesModel: countriesModel,
-                        browsersModel: browsersModel,
-                        screensModel: screensModel,
-                        systemsModel: systemsModel,
-                        goalsModel: goalsModel,
-                        breakdownChild: liveChild(),
-                        onBreakdownFilter: { [queryModel] clause in queryModel?.addClause(clause) ?? false },
-                        realtimeModel: realtimeModel,
-                        onExport: { [hub] query in
-                            let result = try await hub.export(query, today: Date())
-                            return (filename: result.filename, data: result.data)
-                        },
-                    )
-                    .toolbar {
-                        if let account = selection.selectedAccount {
-                            Button("Sign Out") {
-                                Task { await signOut(account) }
-                            }
-                            .accessibilityIdentifier("live-signout")
+                HomeRootView(
+                    directory: directory,
+                    overviewLoader: { [hub] query, today in try await hub.overview(query, today: today) },
+                    seriesLoader: { [hub] query, today in try await hub.series(query, today: today) },
+                    breakdownLoader: { [hub] request, today in try await hub.breakdown(request, today: today) },
+                    suggestions: { [hub] request, today in
+                        let results = try await hub.suggestions(request, today: today)
+                        return results.map { Suggestion(label: $0.label, value: $0.value) }
+                    },
+                    segmentList: nil,
+                    realtimeLoader: { [hub] account, site in
+                        try await hub.currentVisitors(accountID: account, domain: site.domain)
+                    },
+                    onSignOut: { account in
+                        try await hub.signOut(account.id)
+                        await refreshAccounts()
+                    },
+                    onExport: { [hub] query in
+                        let result = try await hub.export(query, today: Date())
+                        return (filename: result.filename, data: result.data)
+                    },
+                    resolveBase: { [hub] query in await corrected(query, hub: hub) },
+                    applyLock: { [hub] queryModel in
+                        if let segment = await hub.limitedSegment(accountID: queryModel.base.accountID) {
+                            queryModel.locked = FilterExpression(clauses: [
+                                FilterClause(dimension: .segment, op: .is_, values: [.number(segment)])
+                            ])
+                            queryModel.refresh()
                         }
                     }
-                }
-                .onChange(of: selection.query) { _, query in
-                    Task { await rebuildModels(for: query) }
-                }
-                .onChange(of: queryModel?.effective) {
-                    updateRealtimeTick()
-                }
+                )
             }
         }
         .task { await refreshAccounts() }
@@ -580,130 +559,23 @@ struct LiveRootView: View {
             showingSignOutError = true
         }
     }
+}
 
-    /// Rebuilds every report model for the selected query with live loaders.
-    /// Applies the site's IANA timezone (settings transport) before the first
-    /// load so day boundaries match the dashboard; unknown timezone keeps the
-    /// model's own default rather than the device zone.
-    private func rebuildModels(for query: DashboardQuery?) async {
-        guard let query else {
-            queryModel = nil
-            overviewModel = nil
-            channelsModel = nil
-            sourcesModel = nil
-            pagesModel = nil
-            entryModel = nil
-            exitModel = nil
-            countriesModel = nil
-            browsersModel = nil
-            screensModel = nil
-            systemsModel = nil
-            goalsModel = nil
-            realtimeModel.stop()
-            realtimeModel.onTick = nil
-            return
-        }
-        let effective = await corrected(query)
-        let hub = hub
-        queryModel = QueryModel(
-            base: effective,
-            suggestions: { request, today in
-                let results = try await hub.suggestions(request, today: today)
-                return results.map { Suggestion(label: $0.label, value: $0.value) }
-            },
-            segmentList: nil
-        )
-        // Shared-link locked scope: the server's segment id becomes the
-        // immutable lock (cleared only by signing out). The lock rides
-        // every query and can never be broadened from the filter editor.
-        if let segment = await hub.limitedSegment(accountID: effective.accountID) {
-            queryModel?.locked = FilterExpression(clauses: [
-                FilterClause(dimension: .segment, op: .is_, values: [.number(segment)])
-            ])
-            queryModel?.refresh()
-        }
-        overviewModel = OverviewModel(
-            overviewLoader: { query, today in try await hub.overview(query, today: today) },
-            seriesLoader: { query, today in try await hub.series(query, today: today) },
-            overviewCache: overviewOverviewCache,
-            seriesCache: overviewSeriesCache
-        )
-        sourcesModel = liveBreakdown(.sources, query: effective, hub: hub)
-        channelsModel = liveBreakdown(.channels, query: effective, hub: hub)
-        pagesModel = liveBreakdown(.pages, query: effective, hub: hub)
-        entryModel = liveBreakdown(.entryPages, query: effective, hub: hub)
-        exitModel = liveBreakdown(.exitPages, query: effective, hub: hub)
-        countriesModel = liveBreakdown(.countries, query: effective, hub: hub)
-        browsersModel = liveBreakdown(.browsers, query: effective, hub: hub)
-        screensModel = liveBreakdown(.screenSizes, query: effective, hub: hub)
-        systemsModel = liveBreakdown(.operatingSystems, query: effective, hub: hub)
-        goalsModel = liveBreakdown(.conversions, query: effective, hub: hub)
-        realtimeModel.start(account: effective.accountID, site: effective.siteID) { account, site in
-            try await hub.currentVisitors(accountID: account, domain: site.domain)
-        }
-        updateRealtimeTick()
-    }
-
-    private func liveBreakdown(
-        _ definition: ReportDefinition, query: DashboardQuery, hub: LiveHub
-    ) -> BreakdownModel {
-        BreakdownModel(
-            definition: definition, query: query,
-            loader: { request, today in try await hub.breakdown(request, today: today) }
-        )
-    }
-
-    /// Arms the realtime-period refresh: on the dashboard's realtime query
-    /// every headcount tick also reloads the visible reports. Historical
-    /// periods keep the badge polling but never touch reports.
-    private func updateRealtimeTick() {
-        guard let effective = queryModel?.effective, effective.period == .realtime else {
-            realtimeModel.onTick = nil
-            return
-        }
-        realtimeModel.onTick = { [queryModel, overviewModel, channelsModel, sourcesModel, pagesModel, entryModel, exitModel, countriesModel, browsersModel, screensModel, systemsModel, goalsModel] in
-            guard let current = queryModel?.effective else { return }
-            await overviewModel?.reload(query: current)
-            await channelsModel?.load()
-            await sourcesModel?.load()
-            await pagesModel?.load()
-            await entryModel?.load()
-            await exitModel?.load()
-            await countriesModel?.load()
-            await browsersModel?.load()
-            await screensModel?.load()
-            await systemsModel?.load()
-            await goalsModel?.load()
-        }
-    }
-
-    private func liveChild() -> BreakdownChildFactory {
-        let hub = hub
-        return { target, query in
-            BreakdownModel(
-                definition: breakdownDefinition(for: target.kind, title: target.title),
-                query: breakdownQuery(query, adding: target.filter),
-                loader: { request, today in try await hub.breakdown(request, today: today) }
-            )
-        }
-    }
-
-    private func corrected(_ query: DashboardQuery) async -> DashboardQuery {
-        guard let zone = await hub.timeZone(account: query.accountID, domain: query.siteID.domain),
-              zone != query.timeZone
-        else { return query }
-        return DashboardQuery(
-            accountID: query.accountID,
-            siteID: query.siteID,
-            period: query.period,
-            periodDate: query.periodDate,
-            comparison: query.comparison,
-            matchDayOfWeek: query.matchDayOfWeek,
-            filters: query.filters,
-            includeImported: query.includeImported,
-            interval: query.interval,
-            selectedMetric: query.selectedMetric,
-            timeZone: zone
-        )
-    }
+private func corrected(_ query: DashboardQuery, hub: LiveHub) async -> DashboardQuery {
+    guard let zone = await hub.timeZone(account: query.accountID, domain: query.siteID.domain),
+          zone != query.timeZone
+    else { return query }
+    return DashboardQuery(
+        accountID: query.accountID,
+        siteID: query.siteID,
+        period: query.period,
+        periodDate: query.periodDate,
+        comparison: query.comparison,
+        matchDayOfWeek: query.matchDayOfWeek,
+        filters: query.filters,
+        includeImported: query.includeImported,
+        interval: query.interval,
+        selectedMetric: query.selectedMetric,
+        timeZone: zone
+    )
 }

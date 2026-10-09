@@ -31,38 +31,8 @@ final class SmokeTests: XCTestCase {
 
 
 
-/// TEMPORARY asset refresh. Removed after capturing.
-final class TempAssetRefresh: XCTestCase {
-    private var app: XCUIApplication!
 
-    private func element(_ identifier: String) -> XCUIElement {
-        app.descendants(matching: .any)[identifier].firstMatch
-    }
-
-    func testRefreshAssets() throws {
-        app = XCUIApplication()
-        app.launchArguments.append("-plausely-mock-sites")
-        app.launch()
-        let dir = URL(fileURLWithPath: "/tmp/plausely-demo", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 30))
-        element("site-row-alpha-1.example.com").tap()
-        XCTAssertTrue(element("overview-stat-visitors").waitForExistence(timeout: 30))
-        sleep(2)
-        try? app.screenshot().pngRepresentation.write(to: dir.appending(path: "asset-ios-overview.png"))
-        let target = element("breakdown-countries-summary-0")
-        let deadline = Date().addingTimeInterval(30)
-        while !target.exists, Date() < deadline {
-            app.swipeUp()
-            sleep(1)
-        }
-        sleep(1)
-        try? app.screenshot().pngRepresentation.write(to: dir.appending(path: "asset-ios-geo.png"))
-    }
-}
-
-/// Site shell against the deterministic 13-site mock directory: sidebar
-/// selection, long names, detail/back, and instance switching.
+/// Home tab flows against the deterministic 13-site mock directory.
 @MainActor
 final class SiteShellTests: XCTestCase {
     private var app: XCUIApplication!
@@ -81,173 +51,338 @@ final class SiteShellTests: XCTestCase {
         app.descendants(matching: .any)[identifier].firstMatch
     }
 
-    func testSiteSelectionDetailAndBack() throws {
-        launch()
-        XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
-        // Long domain renders (truncation never drops the row)…
-        let longDomain = "extremely-long-subdomain-name-for-truncation-testing-purposes.example.com"
-        let longRow = element("site-row-\(longDomain)")
-        XCTAssertTrue(longRow.waitForExistence(timeout: 15))
-        longRow.tap()
-        XCTAssertTrue(app.navigationBars[longDomain].waitForExistence(timeout: 15))
-        XCTAssertTrue(element("site-detail").waitForExistence(timeout: 15))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
-        // …and a 13-site list keeps its tail reachable through search.
-        let search = app.searchFields.firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 15))
-        search.tap()
-        search.typeText("beta-6")
-        let tailRow = element("site-row-beta-6.example.org")
-        XCTAssertTrue(tailRow.waitForExistence(timeout: 15))
-        tailRow.tap()
-        XCTAssertTrue(app.navigationBars["beta-6.example.org"].waitForExistence(timeout: 15))
+    private func openSite(_ domain: String = "alpha-1.example.com") {
+        chooseSite(domain, expectPill: domain)
+        XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 20))
     }
 
-    func testInstanceSwitchChangesSites() throws {
-        launch()
-        XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
-        XCTAssertTrue(element("site-row-alpha-1.example.com").waitForExistence(timeout: 15))
-        // The instance menu is a native menu button titled by the account.
-        tapMenu("owner@example.com")
-        app.descendants(matching: .any)["viewer@example.com"].firstMatch.tap()
-        XCTAssertTrue(element("site-row-local.example").waitForExistence(timeout: 15))
-        XCTAssertFalse(element("site-row-alpha-1.example.com").waitForExistence(timeout: 5))
+    /// Site/account selection with verification: opens the site menu,
+    /// picks the row, and proves the pill retargeted. Retries the whole
+    /// cycle — under load a tap can land mid-layout-shift and silently
+    /// miss, and sites arrive asynchronously after launch. Blind toggles
+    /// converge: a tap on an open menu closes it, the next tap reopens.
+    private func chooseSite(_ domain: String, expectPill: String? = nil, expectChangeFrom: String? = nil) {
+        let deadline = Date().addingTimeInterval(90)
+        while Date() < deadline {
+            pillTap()
+            if peekOption(domain, timeout: 8) != nil {
+                selectOption(domain)
+                sleep(2)
+                let pillLabel = element("home-site").label
+                let pillOk = expectPill.map { pillLabel.contains($0) } ?? true
+                let changedOk = expectChangeFrom.map { pillLabel != $0 } ?? true
+                if pillOk, changedOk, element("home-hero-count").exists { return }
+                // Tapped but state did not settle: close the menu for a
+                // clean retry.
+                pillTap()
+                sleep(1)
+            } else {
+                // Menu closed on tap, or opened before rows loaded: beat
+                // for the async directory, then retry.
+                sleep(2)
+            }
+        }
+        XCTFail("site menu never selected \(domain)")
     }
 
-    private func openDetail() {
-        XCTAssertTrue(element("site-sidebar").waitForExistence(timeout: 15))
-        element("site-row-alpha-1.example.com").tap()
-        XCTAssertTrue(app.navigationBars["alpha-1.example.com"].waitForExistence(timeout: 15))
+    /// Header pill tap without scrolling games: callers ensure position
+    /// first (scrollToTop). Resolves fresh and taps immediately so no
+    /// layout shift can stale the coordinate.
+    private func pillTap() {
+        scrollToTop()
+        let pill = element("home-site")
+        XCTAssertTrue(pill.waitForExistence(timeout: 15))
+        pill.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        sleep(1)
+    }
+
+    /// Returns content to the top so header pills are tappable. Only the
+    /// scroll content moves; the floating tab bar is unaffected. Uses
+    /// element swipes: press-drags from screen center are captured by the
+    /// metric-picker menu/chart gestures and never scroll.
+    private func scrollToTop(timeout: TimeInterval = 15) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let pill = element("home-site")
+            if pill.exists, pill.isHittable, pill.frame.minY >= 0 { break }
+            app.swipeDown()
+            sleep(1)
+        }
+    }
+
+    private func tab(_ name: String) {
+        // The floating bar sits outside the scroll content, so scrolling
+        // can never move it: tap directly, then prove the pane switched.
+        // A tap that lands mid-layout-shift silently misses, so retry
+        // until the pane answers.
+        let deadline = Date().addingTimeInterval(30)
+        while !element("home-pane-\(name)").exists, Date() < deadline {
+            let button = element("home-tab-\(name)")
+            XCTAssertTrue(button.waitForExistence(timeout: 10))
+            button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            sleep(2)
+        }
+        XCTAssertTrue(element("home-pane-\(name)").waitForExistence(timeout: 5))
     }
 
     private func menuOption(_ option: String, timeout: TimeInterval = 15) -> XCUIElement {
-        let match = app.descendants(matching: .any)[option].firstMatch
-        XCTAssertTrue(match.waitForExistence(timeout: timeout), "option \(option)")
+        guard let match = peekOption(option, timeout: timeout) else {
+            XCTFail("option \(option)")
+            return app.descendants(matching: .button)[option].firstMatch
+        }
         return match
     }
 
-    private func reveal(_ identifier: String, timeout: TimeInterval = 15) -> XCUIElement {
+    /// Drives a pill menu until the pill itself reads the expected option.
+    /// Pill relabel (plus menu dismissal) is the only proof a tap
+    /// selected; retries missed taps. Already-selected returns at once.
+    private func choosePill(pill: String, expecting: String, timeout: TimeInterval = 90) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let p = element(pill)
+            if p.exists, p.label.contains(expecting) { return }
+            let current = (p.exists && !p.label.isEmpty) ? p.label : expecting
+            openMenu(button: current, expecting: expecting, timeout: 20)
+            selectOption(expecting)
+            sleep(2)
+        }
+        XCTFail("pill \(pill) never read \(expecting)")
+    }
+
+    /// Non-asserting probe: nil when the option never appears (menu still
+    /// loading), so retry loops don't log failures per attempt. Matches
+    /// buttons only: menu option labels also exist as inert StaticText
+    /// snapshots, and tapping those is a silent no-op.
+    private func peekOption(_ option: String, timeout: TimeInterval) -> XCUIElement? {
+        let match = app.descendants(matching: .button)[option].firstMatch
+        guard match.waitForExistence(timeout: timeout) else { return nil }
+        // Let the menu animation settle so taps land on the right row.
+        sleep(1)
+        return match
+    }
+
+    private func menuButton(_ title: String, timeout: TimeInterval = 15) -> XCUIElement {
+        // Pills live inside the scroll content and can sit off-screen:
+        // page toward the labeled button (down when it sits above the
+        // band, up when below), then resolve it fresh — scrolling
+        // invalidates earlier snapshots. Matches by visible title.
+        let deadline = Date().addingTimeInterval(timeout)
+        var button = app.descendants(matching: .button)[title].firstMatch
+        while Date() < deadline {
+            if button.exists {
+                let frame = button.frame
+                let height = app.frame.height
+                if frame.minY > height * 0.05, frame.maxY < height * 0.85 { break }
+                // Element swipes, not press-drags: center press-drags are
+                // captured by menu/chart gestures and never scroll.
+                if frame.minY <= height * 0.05 {
+                    app.swipeDown()
+                } else {
+                    app.swipeUp()
+                }
+                sleep(1)
+                button = app.descendants(matching: .button)[title].firstMatch
+            } else {
+                // Not laid out yet: nudge upward; content below the fold
+                // is the common case.
+                app.swipeUp()
+                sleep(1)
+                button = app.descendants(matching: .button)[title].firstMatch
+            }
+        }
+        XCTAssertTrue(button.waitForExistence(timeout: timeout), "menu \(title)")
+        sleep(1)
+        // Resolve fresh after the settle beat: async reloads shift layout,
+        // and tapping a stale snapshot misses the menu entirely.
+        return app.descendants(matching: .button)[title].firstMatch
+    }
+
+    /// Opens a Menu button and proves the expected option appeared,
+    /// retrying taps that land mid-layout-shift and silently miss. Menu
+    /// rows are static, so an open menu always offers its options: if the
+    /// option is already visible, no tap is needed. The post-tap probe is
+    /// deliberately long — a short one toggles a slowly-presenting menu
+    /// back closed and oscillates forever.
+    private func openMenu(button: String, expecting: String, timeout: TimeInterval = 60) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if peekOption(expecting, timeout: 2) != nil { return }
+            let b = menuButton(button, timeout: 10)
+            b.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            if peekOption(expecting, timeout: 8) != nil { return }
+        }
+        XCTFail("menu \(button) never offered \(expecting)")
+    }
+
+    /// Picks an open-menu option: waits out the presentation animation
+    /// for hittability, then coordinate-taps so no auto-scroll can steal
+    /// the landing.
+    private func selectOption(_ option: String, timeout: TimeInterval = 15) {
+        guard let match = peekOption(option, timeout: timeout) else {
+            XCTFail("option \(option)")
+            return
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while !match.isHittable, Date() < deadline { sleep(1) }
+        XCTAssertTrue(match.isHittable, "option not hittable \(option)")
+        match.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
+    private func reveal(_ identifier: String, timeout: TimeInterval = 20) -> XCUIElement {
+        // Directional paging with element swipes (press-drags from
+        // center are captured by menu/chart gestures and never scroll):
+        // up when the target sits below the band, down when it scrolled
+        // past above it. Band stays clear of the status bar and the
+        // floating tab bar. Overshoot self-corrects next iteration.
         let target = element(identifier)
         let deadline = Date().addingTimeInterval(timeout)
-        // Short press-drags, never full swipes: fling momentum leapfrogs
-        // tall sections (overview + chart + table span screens), and
-        // List-virtualized rows only exist while on-screen, so a skipped
-        // section polls as missing forever. Once found, ease the target
-        // into the middle band so taps land and neighbors stay visible.
-        let list = element("site-detail")
-        func nudge(_ up: Bool) {
-            let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.7 : 0.3))
-            let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: up ? 0.55 : 0.45))
-            from.press(forDuration: 0.1, thenDragTo: to)
-        }
         while Date() < deadline {
             if target.exists {
                 let frame = target.frame
                 let height = app.frame.height
                 if frame.height > height * 0.6 { break }
-                if frame.minY > height * 0.25, frame.maxY < height * 0.8 { break }
-                if frame.maxY >= height * 0.8, frame.minY < height {
-                    nudge(true)
-                } else if frame.minY < height * 0.25, frame.maxY > 0 {
-                    nudge(false)
+                if frame.minY > height * 0.05, frame.maxY < height * 0.85 { break }
+                if frame.minY <= height * 0.05 {
+                    app.swipeDown()
                 } else {
-                    nudge(true)
+                    app.swipeUp()
                 }
             } else {
-                let from = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
-                let to = list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))
-                from.press(forDuration: 0.1, thenDragTo: to)
+                app.swipeUp()
             }
             sleep(1)
         }
+        // Let any residual deceleration die before the caller taps:
+        // taps that land mid-scroll are eaten as scroll-stops.
+        sleep(2)
         return target
+    }
+
+    /// Taps a show-all/hub button until its sheet exists. Content loads
+    /// asynchronously and shifts rows under the finger, so a single tap
+    /// can land on the wrong row — re-resolve and retry instead.
+    private func openSheet(_ buttonID: String, sheetID: String = "breakdown-full", timeout: TimeInterval = 25) {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !element(sheetID).exists, Date() < deadline {
+            tap(buttonID)
+            sleep(2)
+        }
+        XCTAssertTrue(element(sheetID).waitForExistence(timeout: 5))
+    }
+
+    /// Position then coordinate-tap: AX taps auto-scroll first, which moves
+    /// content under slow renderers and misses. Re-resolve after the
+    /// scroll settles so the coordinate is current, then tap immediately.
+    private func tap(_ identifier: String, timeout: TimeInterval = 20) {
+        _ = reveal(identifier, timeout: timeout)
+        let fresh = element(identifier)
+        XCTAssertTrue(fresh.waitForExistence(timeout: 5), "tap target \(identifier)")
+        fresh.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+    }
+
+
+    func testSiteSelectionAndSwitch() throws {
+        launch()
+        openSite()
+        // Long domains survive the site menu without dropping the row.
+        let longDomain = "extremely-long-subdomain-name-for-truncation-testing-purposes.example.com"
+        chooseSite(longDomain, expectPill: longDomain)
+        XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 15))
+        // Instance switching re-targets the site menu: any viewer site
+        // proves the switch, and the old account's rows vanish.
+        chooseSite("viewer@example.com", expectChangeFrom: longDomain)
+        XCTAssertTrue(element("home-site").waitForExistence(timeout: 15))
+        scrollToTop()
+        pillTap()
+        XCTAssertTrue(menuOption("local.example").waitForExistence(timeout: 15))
+        XCTAssertFalse(app.descendants(matching: .any)["alpha-1.example.com"].waitForExistence(timeout: 5))
+        pillTap()
     }
 
     func testQueryToolbarPeriodsAndComparison() throws {
         launch()
-        openDetail()
-        // Period presets rewrite the query; the menu label tracks state.
-        element("Last 28 days").tap()
-        menuOption("Last 7 days").tap()
+        openSite()
+        // Period presets rewrite the query; the pill label tracks state.
+        choosePill(pill: "home-period", expecting: "Last 7 days")
         XCTAssertTrue(element("Last 7 days").waitForExistence(timeout: 15))
-        element("Last 7 days").tap()
-        menuOption("Yesterday").tap()
+        choosePill(pill: "home-period", expecting: "Yesterday")
         XCTAssertTrue(element("Yesterday").waitForExistence(timeout: 15))
         // Comparisons apply with the weekday-alignment toggle…
-        element("No comparison").tap()
-        menuOption("Previous period").tap()
+        XCTAssertTrue(reveal("comparison-picker").waitForExistence(timeout: 15))
+        choosePill(pill: "comparison-picker", expecting: "Previous period")
         XCTAssertTrue(element("Previous period").waitForExistence(timeout: 15))
         XCTAssertTrue(element("Match day of week").waitForExistence(timeout: 15))
         // …and realtime refuses comparisons with a typed message.
-        element("Previous period").tap()
-        menuOption("No comparison").tap()
-        element("Yesterday").tap()
-        menuOption("Realtime").tap()
-        element("No comparison").tap()
-        menuOption("Previous period").tap()
-        XCTAssertTrue(element("Comparisons are off for realtime.").waitForExistence(timeout: 15))
+        choosePill(pill: "comparison-picker", expecting: "No comparison")
+        choosePill(pill: "home-period", expecting: "Realtime")
+        // Refused selections keep their pill, so the message itself is
+        // the outcome: re-drive until it answers.
+        let rdeadline = Date().addingTimeInterval(90)
+        while !element("Comparisons are off for realtime.").exists, Date() < rdeadline {
+            let current = element("comparison-picker").label
+            openMenu(button: current.isEmpty ? "No comparison" : current, expecting: "Previous period")
+            selectOption("Previous period")
+            sleep(2)
+        }
+        XCTAssertTrue(element("Comparisons are off for realtime.").waitForExistence(timeout: 5))
     }
 
     func testFilterAddSuggestAndRemove() throws {
         launch()
-        openDetail()
-        reveal("filter-add").tap()
+        openSite()
+        // The clause sheet is the only proof the Add tap landed: retry
+        // until it answers.
+        let fadeadline = Date().addingTimeInterval(60)
+        while !element("clause-value").exists, Date() < fadeadline {
+            tap("filter-add")
+            sleep(2)
+        }
         let valueField = element("clause-value")
-        XCTAssertTrue(valueField.waitForExistence(timeout: 15))
+        XCTAssertTrue(valueField.waitForExistence(timeout: 5))
         valueField.tap()
         valueField.typeText("Goo")
-        // Suggestion from the provider completes the value.
-        let suggestion = element("suggestion-Google")
-        XCTAssertTrue(suggestion.waitForExistence(timeout: 15))
-        suggestion.tap()
+        tap("suggestion-Google")
         XCTAssertTrue(element("clause-value-Google").waitForExistence(timeout: 15))
-        element("clause-add").tap()
+        tap("clause-add")
         XCTAssertTrue(element("Source is Google").waitForExistence(timeout: 15))
-        // Removal drops the clause again.
-        element("filter-remove-0").tap()
+        tap("filter-remove-0")
         XCTAssertFalse(element("Source is Google").waitForExistence(timeout: 5))
     }
 
     func testSegmentApplyAndRemove() throws {
         launch()
-        openDetail()
-        XCTAssertTrue(reveal("segment-apply-7").waitForExistence(timeout: 15))
-        reveal("segment-apply-7").tap()
+        openSite()
+        // A tap can land on a neighboring row when content shifts under
+        // load; the applied chip is the only proof. Single-segment
+        // semantics replace any mis-tap, so retrying converges.
+        let sdeadline = Date().addingTimeInterval(60)
+        while !element("segment-applied-7").exists, Date() < sdeadline {
+            tap("segment-apply-7")
+            sleep(2)
+        }
         XCTAssertTrue(element("segment-applied-7").waitForExistence(timeout: 15))
         XCTAssertTrue(element("Operating system is iOS").waitForExistence(timeout: 15))
-        reveal("segment-clear").tap()
+        tap("segment-clear")
         XCTAssertFalse(element("Operating system is iOS").waitForExistence(timeout: 5))
     }
 
     func testBreakdownSummaryToDetail() throws {
         launch()
-        openDetail()
-        // Sources summary with show-all.
+        openSite()
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-sources-summary-0").waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-sources-summary-4").exists)
-        // Full report opens as a sheet (like the dashboard's expanded
-        // modal), so drilldown pushes always have a stack on every
-        // platform. Return via Done; the site detail never loses state.
-        reveal("breakdown-sources-show-all").tap()
-        XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
-        // Server sort Z–A puts Source 1500 first. The chip applies
-        // asynchronously; poll the first row until the reload lands.
-        reveal("sort-option-breakdown-sources-name-desc").tap()
+        openSheet("breakdown-sources-show-all")
+        tap("sort-option-breakdown-sources-name-desc")
         do {
             let first = element("breakdown-sources-row-0")
             let deadline = Date().addingTimeInterval(15)
             while !first.label.contains("Source 1500"), Date() < deadline { sleep(1) }
             XCTAssertTrue(first.label.contains("Source 1500"))
         }
-        // Sources rows drill to referring URLs.
-        element("breakdown-sources-row-0").tap()
+        tap("breakdown-sources-row-0")
         XCTAssertTrue(element("breakdown-referrers-drilldown-row-0").waitForExistence(timeout: 15))
-        // Leaf detail: scroll the form to Filter, apply, and the sheet
-        // closes (query mutations reset path-bound stacks, so the report
-        // returns explicitly instead of staying put). The chip lands on
-        // the dashboard query.
-        element("breakdown-referrers-drilldown-row-0").tap()
+        tap("breakdown-referrers-drilldown-row-0")
         XCTAssertTrue(element("breakdown-referrers-drilldown-detail-name").waitForExistence(timeout: 15))
         do {
             let filter = element("breakdown-referrers-drilldown-filter")
@@ -259,14 +394,10 @@ final class SiteShellTests: XCTestCase {
             }
             sleep(1)
         }
-        element("breakdown-referrers-drilldown-filter").tap()
+        tap("breakdown-referrers-drilldown-filter")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
-        // The applied filter retargets every report: the channels summary
-        // narrows to nothing in the mock set (no channel carries the
-        // referrer tag), which proves end-to-end propagation without
-        // hunting a chip through virtualized rows.
         do {
-            let row = element("breakdown-channels-summary-0")
+            let row = element("breakdown-sources-summary-0")
             let deadline = Date().addingTimeInterval(15)
             while row.exists, Date() < deadline { sleep(1) }
             XCTAssertFalse(row.exists)
@@ -275,60 +406,32 @@ final class SiteShellTests: XCTestCase {
 
     func testChannelsDrillToFilteredSources() throws {
         launch()
-        openDetail()
+        openSite()
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-channels-summary-0").waitForExistence(timeout: 15))
-        reveal("breakdown-channels-show-all").tap()
-        XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
+        openSheet("breakdown-channels-show-all")
         XCTAssertTrue(element("breakdown-channels-row-0").waitForExistence(timeout: 15))
         let channel = element("breakdown-channels-row-0").label
-        // Drilling a channel shows its filtered sources child. The mock set
-        // attributes no sources to synthetic channels, so the child is
-        // honestly empty with the filtered title.
-        element("breakdown-channels-row-0").tap()
+        tap("breakdown-channels-row-0")
         XCTAssertTrue(app.navigationBars["Sources · \(channel)"].waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-sources-empty").waitForExistence(timeout: 15))
-        // Done returns through the stack; the site detail keeps its state.
-        element("breakdown-sources-close").tap()
+        tap("breakdown-sources-close")
         XCTAssertTrue(element("breakdown-channels-row-0").waitForExistence(timeout: 15))
-        element("breakdown-channels-close").tap()
+        tap("breakdown-channels-close")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
-        XCTAssertTrue(element("site-detail").waitForExistence(timeout: 15))
-    }
-
-    private func menuButton(_ title: String, timeout: TimeInterval = 15) -> XCUIElement {
-        // The metric Menu drops its accessibility id (it inherits the
-        // ancestor's, like macOS Menus), so match the tappable Button by
-        // title: card name texts are StaticTexts and never collide.
-        let button = app.descendants(matching: .button)[title].firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: timeout), "menu \(title)")
-        let deadline = Date().addingTimeInterval(5)
-        var swipes = 0
-        while !button.isHittable, Date() < deadline, swipes < 3 {
-            app.swipeUp()
-            swipes += 1
-        }
-        return button
-    }
-
-    /// Menu taps bypass the AX scroll action (coordinate tap), which flakes
-    /// on visible menus when the harness thinks scrolling is needed.
-    private func tapMenu(_ title: String, timeout: TimeInterval = 15) {
-        let button = menuButton(title, timeout: timeout)
-        button.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 
     func testUtmHubToFilter() throws {
         launch()
-        openDetail()
-        // UTM hub entry opens the family list sheet.
+        openSite()
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-utm-hub").waitForExistence(timeout: 15))
-        reveal("breakdown-utm-hub").tap()
+        openSheet("breakdown-utm-hub", sheetID: "breakdown-hub")
         XCTAssertTrue(element("breakdown-hub-utm_mediums").waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-hub-utm_contents").exists)
-        // Mediums report; first row detail filters the dashboard query.
-        element("breakdown-hub-utm_mediums").tap()
+        tap("breakdown-hub-utm_mediums")
         XCTAssertTrue(element("breakdown-utm_mediums-row-0").waitForExistence(timeout: 15))
-        element("breakdown-utm_mediums-row-0").tap()
+        tap("breakdown-utm_mediums-row-0")
         XCTAssertTrue(element("breakdown-utm_mediums-detail-name").waitForExistence(timeout: 15))
         sleep(1)
         do {
@@ -341,12 +444,8 @@ final class SiteShellTests: XCTestCase {
             }
             sleep(1)
         }
-        element("breakdown-utm_mediums-filter").tap()
+        tap("breakdown-utm_mediums-filter")
         XCTAssertFalse(element("breakdown-hub").waitForExistence(timeout: 5))
-        // The applied filter retargets every report: sources narrow to
-        // nothing in the mock set (no source carries the UTM tag), which
-        // proves end-to-end propagation without hunting a chip through
-        // virtualized rows.
         do {
             let row = element("breakdown-sources-summary-0")
             let deadline = Date().addingTimeInterval(15)
@@ -357,17 +456,13 @@ final class SiteShellTests: XCTestCase {
 
     func testPagesFilterAndOpen() throws {
         launch()
-        openDetail()
-        // Pages summary with show-all.
+        openSite()
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-pages-summary-0").waitForExistence(timeout: 15))
-        reveal("breakdown-pages-show-all").tap()
-        XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
+        openSheet("breakdown-pages-show-all")
         XCTAssertTrue(element("breakdown-pages-row-0").waitForExistence(timeout: 15))
-        // Leaf detail: null engagement renders as gaps (open check needs
-        // a scroll), then Filter application closes the sheet.
-        element("breakdown-pages-row-0").tap()
+        tap("breakdown-pages-row-0")
         XCTAssertTrue(element("breakdown-pages-detail-name").waitForExistence(timeout: 15))
-        // Unavailable engagement renders as an explicit gap row, not zero.
         XCTAssertTrue(element("breakdown-pages-detail-time_on_page").exists)
         do {
             let open = element("breakdown-pages-open")
@@ -389,7 +484,7 @@ final class SiteShellTests: XCTestCase {
             }
             sleep(1)
         }
-        element("breakdown-pages-filter").tap()
+        tap("breakdown-pages-filter")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
         do {
             let row = element("breakdown-sources-summary-0")
@@ -401,16 +496,12 @@ final class SiteShellTests: XCTestCase {
 
     func testEntryAndExitFilterFlows() throws {
         launch()
-        openDetail()
-        // Entry pages: summary with show-all, full report, leaf detail,
-        // filter application closes the sheet (mirrors the pages flow).
+        openSite()
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-entry-pages-summary-0").waitForExistence(timeout: 15))
-        reveal("breakdown-entry-pages-show-all").tap()
-        XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
+        openSheet("breakdown-entry-pages-show-all")
         XCTAssertTrue(element("breakdown-entry-pages-row-0").waitForExistence(timeout: 15))
-        // Entrances ride visits and never equal pageviews: the detail
-        // exposes the visit count for the row.
-        element("breakdown-entry-pages-row-0").tap()
+        tap("breakdown-entry-pages-row-0")
         XCTAssertTrue(element("breakdown-entry-pages-detail-name").waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-entry-pages-detail-visits").exists)
         do {
@@ -423,18 +514,13 @@ final class SiteShellTests: XCTestCase {
             }
             sleep(1)
         }
-        element("breakdown-entry-pages-filter").tap()
+        tap("breakdown-entry-pages-filter")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
-        // Exit pages keep their own flow after the entry filter lands: the
-        // mock ignores the entry-page clause for other families, so the
-        // exit summary still lists rows.
         XCTAssertTrue(reveal("breakdown-exit-pages-summary-0").waitForExistence(timeout: 15))
-        reveal("breakdown-exit-pages-show-all").tap()
-        XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
+        openSheet("breakdown-exit-pages-show-all")
         XCTAssertTrue(element("breakdown-exit-pages-row-0").waitForExistence(timeout: 15))
-        element("breakdown-exit-pages-row-0").tap()
+        tap("breakdown-exit-pages-row-0")
         XCTAssertTrue(element("breakdown-exit-pages-detail-name").waitForExistence(timeout: 15))
-        // The server-computed exit rate renders on the detail.
         XCTAssertTrue(element("breakdown-exit-pages-detail-exit_rate").exists)
         do {
             let filter = element("breakdown-exit-pages-filter")
@@ -446,61 +532,55 @@ final class SiteShellTests: XCTestCase {
             }
             sleep(1)
         }
-        element("breakdown-exit-pages-filter").tap()
+        tap("breakdown-exit-pages-filter")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
-        XCTAssertTrue(element("site-detail").waitForExistence(timeout: 15))
     }
 
     func testComparisonBadgesAcrossWorkflows() throws {
         launch()
-        openDetail()
-        // Previous-period comparison retargets every breakdown with
-        // previous values and server deltas.
-        tapMenu("No comparison")
-        menuOption("Previous period").tap()
+        openSite()
+        XCTAssertTrue(reveal("comparison-picker").waitForExistence(timeout: 15))
+        choosePill(pill: "comparison-picker", expecting: "Previous period")
         XCTAssertTrue(element("Previous period").waitForExistence(timeout: 15))
-        // Compact summaries gain change badges on the primary column.
+        tab("breakdowns")
         XCTAssertTrue(reveal("breakdown-sources-summary-change-0-visitors").waitForExistence(timeout: 15))
-        // The full report renders the comparison query's rows; the leaf
-        // detail pushed from the full report proves the comparison
-        // payload. Every report reloads at once under a new comparison,
-        // so the tap
-        // can land mid-layout: retry until the sheet opens.
         do {
             let deadline = Date().addingTimeInterval(30)
             while !element("breakdown-full").exists, Date() < deadline {
-                reveal("breakdown-sources-show-all").tap()
+                tap("breakdown-sources-show-all")
                 sleep(1)
             }
         }
         XCTAssertTrue(element("breakdown-full").waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-sources-row-0").waitForExistence(timeout: 15))
-        element("breakdown-sources-close").tap()
+        tap("breakdown-sources-close")
         XCTAssertFalse(element("breakdown-full").waitForExistence(timeout: 5))
-        // Leaf details expose the previous value and the server delta.
         XCTAssertTrue(reveal("breakdown-pages-summary-0").waitForExistence(timeout: 15))
-        reveal("breakdown-pages-show-all").tap()
+        tap("breakdown-pages-show-all")
         XCTAssertTrue(element("breakdown-pages-row-0").waitForExistence(timeout: 15))
-        element("breakdown-pages-row-0").tap()
+        tap("breakdown-pages-row-0")
         XCTAssertTrue(element("breakdown-pages-detail-visitors-change").waitForExistence(timeout: 15))
         XCTAssertTrue(element("breakdown-pages-detail-visitors-comparison").exists)
     }
 
     func testOverviewCardsAndMetricSwitch() throws {
         launch()
-        openDetail()
-        // Headline cards render the mock top-stats aggregates in order.
-        XCTAssertTrue(reveal("overview-stat-visitors").waitForExistence(timeout: 15))
-        XCTAssertTrue(element("overview-value-visitors").exists)
-        XCTAssertTrue(element("overview-stat-bounce_rate").exists)
-        // The chart inherits its ancestor id, so match its stable voice label.
+        openSite()
+        XCTAssertTrue(reveal("overview-value-visitors").waitForExistence(timeout: 15))
+        for metric in ["visitors", "visits", "pageviews", "views_per_visit", "bounce_rate", "visit_duration"] {
+            XCTAssertTrue(element("overview-value-\(metric)").exists, "missing card \(metric)")
+        }
         XCTAssertTrue(element("Unique visitors chart, 8 buckets").waitForExistence(timeout: 15))
-        // Switching the chart metric reloads the series with its own identity.
-        tapMenu("Unique visitors")
-        menuOption("Total visits").tap()
+        // The reselected chart is the only proof the option tap landed:
+        // re-drive the menu until it answers.
+        let mdeadline = Date().addingTimeInterval(90)
+        while !element("Total visits chart, 8 buckets").exists, Date() < mdeadline {
+            let current = element("metric-picker").label
+            openMenu(button: current.isEmpty ? "Unique visitors" : current, expecting: "Total visits")
+            selectOption("Total visits")
+            sleep(2)
+        }
         XCTAssertTrue(element("Total visits chart, 8 buckets").waitForExistence(timeout: 15))
-        // The accessible table lists one row per bucket with exact values;
-        // the nil bucket renders as an explicit gap, never a zero.
         let expectedRows = [
             "00:00, 14", "03:00, 28", "06:00, no data", "09:00, 56",
             "12:00, 70", "15:00, 84", "18:00, 98", "21:00, 112",
@@ -509,4 +589,17 @@ final class SiteShellTests: XCTestCase {
             XCTAssertTrue(element(row).waitForExistence(timeout: 15))
         }
     }
+
+    func testGoalsAndSettingsTabs() throws {
+        launch()
+        openSite()
+        tab("goals")
+        XCTAssertTrue(reveal("breakdown-conversions-summary-0").waitForExistence(timeout: 20))
+        tab("settings")
+        XCTAssertTrue(element("settings-content").waitForExistence(timeout: 15))
+        XCTAssertTrue(element("settings-account-owner@example.com").waitForExistence(timeout: 15))
+    }
 }
+
+
+
