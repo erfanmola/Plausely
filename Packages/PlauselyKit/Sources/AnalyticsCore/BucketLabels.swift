@@ -41,4 +41,13 @@ public enum BucketLabels {
         }
         return raw
     }
+
+    /// Clock label for realtime minute offsets (`-14` → site clock time
+    /// at request time). Display-only; identity stays on raw values.
+    public static func clockLabel(minutesAgo: Int, today: Date, in timeZone: TimeZone) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let date = calendar.date(byAdding: .minute, value: minutesAgo, to: today) ?? today
+        return make(format: "HH:mm", timeZone: timeZone).string(from: date)
+    }
 }

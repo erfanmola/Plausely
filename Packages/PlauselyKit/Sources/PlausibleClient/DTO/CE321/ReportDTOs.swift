@@ -50,11 +50,14 @@ public struct TopStatsDTO: Decodable, Sendable {
 }
 
 /// `main-graph` response. `plot` preserves null buckets positionally.
+/// Realtime labels arrive as minute-offset integers (`-30…-1`); every
+/// other period uses datetime strings. The adapter maps both to display
+/// strings, so decoding never fails on the shape.
 public struct MainGraphDTO: Decodable, Sendable {
-    public let labels: [String]
+    public let labels: [GraphLabel]
     public let plot: [JSONScalar?]
     public let metric: String
-    public let comparisonLabels: [String]?
+    public let comparisonLabels: [GraphLabel]?
     public let comparisonPlot: [JSONScalar?]?
 
     enum CodingKeys: String, CodingKey {
@@ -63,6 +66,29 @@ public struct MainGraphDTO: Decodable, Sendable {
         case comparisonPlot = "comparison_plot"
     }
 }
+
+/// Graph bucket label: datetime strings on historical periods, integer
+/// minute offsets on realtime.
+public enum GraphLabel: Equatable, Sendable {
+    case text(String)
+    case minutesAgo(Int)
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let text = try? container.decode(String.self) {
+            self = .text(text)
+        } else if let offset = try? container.decode(Int.self) {
+            self = .minutesAgo(offset)
+        } else {
+            throw DecodingError.typeMismatch(
+                GraphLabel.self,
+                DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "expected label string or minute offset")
+            )
+        }
+    }
+}
+
+extension GraphLabel: Decodable {}
 
 /// Breakdown response shared by all report families. Rows carry `name` plus
 /// family-specific metric keys; identifiers (`code`, `browser`, `version`)

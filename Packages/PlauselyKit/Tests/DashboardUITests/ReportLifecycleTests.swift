@@ -293,3 +293,36 @@ struct ReportLifecycleTests {
         #expect(model.state.displayable?.value.stats.first?.value == .count(42))
     }
 }
+
+@Suite("error hygiene")
+struct ErrorHygieneTests {
+    @Test("decoder failures read as human sentences, never dumps")
+    func decodingHuman() {
+        struct Bad: Decodable { let required: Int }
+        let failure: Error = {
+            do {
+                _ = try JSONDecoder().decode(Bad.self, from: Data("{}".utf8))
+                fatalError("must throw")
+            } catch {
+                return error
+            }
+        }()
+        let wrapped = ReportLoadError.wrap(failure)
+        #expect(wrapped.kind == .server)
+        #expect(!wrapped.message.contains("Path:"))
+        #expect(!wrapped.message.contains("Debug description"))
+    }
+
+    @Test("transport failures read as human sentences")
+    func transportHuman() {
+        #expect(ReportLoadError.wrap(URLError(.timedOut)).message == "The server took too long to respond.")
+        #expect(ReportLoadError.wrap(URLError(.notConnectedToInternet)).message == "No connection to the server.")
+        #expect(ReportLoadError.wrap(URLError(.cannotFindHost)).kind == .network)
+    }
+
+    @Test("known errors pass through untouched")
+    func passthrough() {
+        let known = ReportLoadError(message: "boom", kind: .server)
+        #expect(ReportLoadError.wrap(known).message == "boom")
+    }
+}

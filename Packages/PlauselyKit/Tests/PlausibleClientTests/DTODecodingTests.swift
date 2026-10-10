@@ -91,3 +91,30 @@ struct DTODecodingTests {
         #expect(try JSONScalar.int(7).metricValue() == .count(7))
     }
 }
+
+@Suite("realtime graph shapes")
+struct RealtimeGraphTests {
+    @Test("integer minute-offset labels decode")
+    func intLabels() throws {
+        let raw = #"{"labels":[-30,-1],"plot":[0,2],"metric":"visitors","comparison_labels":null,"comparison_plot":null}"#
+        let dto = try JSONDecoder().decode(MainGraphDTO.self, from: Data(raw.utf8))
+        #expect(dto.labels == [.minutesAgo(-30), .minutesAgo(-1)])
+        #expect(dto.plot.count == 2)
+    }
+
+    @Test("minute offsets map to site clock times")
+    func clockMapping() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        let zone = TimeZone(identifier: "UTC")!
+        calendar.timeZone = zone
+        let today = Date(timeIntervalSince1970: 1_790_000_000)
+        let label = CE321DashboardAdapter.graphLabel(.minutesAgo(-30), today: today, timeZone: zone)
+        let expect = calendar.date(byAdding: .minute, value: -30, to: today)!
+        let format = DateFormatter()
+        format.locale = Locale(identifier: "en_US")
+        format.timeZone = zone
+        format.dateFormat = "HH:mm"
+        #expect(label == format.string(from: expect))
+        #expect(CE321DashboardAdapter.graphLabel(.text("2026-10-05 00:00:00"), today: today, timeZone: zone) == "2026-10-05 00:00:00")
+    }
+}

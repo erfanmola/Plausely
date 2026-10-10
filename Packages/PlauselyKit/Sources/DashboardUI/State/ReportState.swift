@@ -22,6 +22,23 @@ public struct ReportLoadError: Error, Hashable, Sendable {
 
     public static func wrap(_ error: Error) -> ReportLoadError {
         if let known = error as? ReportLoadError { return known }
+        if error is DecodingError {
+            return ReportLoadError(
+                message: "The server response changed shape and couldn't be read.",
+                kind: .server
+            )
+        }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return ReportLoadError(message: "The server took too long to respond.", kind: .network)
+            case .notConnectedToInternet, .networkConnectionLost,
+                 .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+                return ReportLoadError(message: "No connection to the server.", kind: .network)
+            default:
+                return ReportLoadError(message: "The request failed before reaching the server.", kind: .network)
+            }
+        }
         return ReportLoadError(message: String(describing: error), kind: .unknown)
     }
 }

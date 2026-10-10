@@ -115,12 +115,12 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
         let dto = try JSONDecoder().decode(MainGraphDTO.self, from: data)
         let value = TimeSeries(
             metric: try Self.metricID(for: dto.metric),
-            labels: dto.labels,
+            labels: dto.labels.map { Self.graphLabel($0, today: today, timeZone: query.timeZone) },
             plot: dto.plot.map { scalar in
                 guard let scalar else { return nil }
                 return try? scalar.metricValue()
             },
-            comparisonLabels: dto.comparisonLabels,
+            comparisonLabels: dto.comparisonLabels?.map { Self.graphLabel($0, today: today, timeZone: query.timeZone) },
             comparisonPlot: dto.comparisonPlot?.map { scalar in
                 guard let scalar else { return nil }
                 return try? scalar.metricValue()
@@ -134,8 +134,7 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
         )
     }
 
-    public func breakdown(_ request: BreakdownRequest, today: Date) async throws -> ReportEnvelope<BreakdownPage> {
-        let query = request.query
+    public func breakdown(_ request: BreakdownRequest, today: Date) async throws -> ReportEnvelope<BreakdownPage> {        let query = request.query
         var items = try Self.queryItems(for: query, today: today)
         items.append(URLQueryItem(name: "detailed", value: "true"))
         if let sort = request.sort {
@@ -249,6 +248,16 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
             throw ClientError.serverError(status: -1)
         }
         return metric
+    }
+
+    /// Bucket labels into display strings. Datetime strings pass through
+    /// verbatim (period-aware trimming happens at render); realtime
+    /// minute offsets become site clock times at request time.
+    static func graphLabel(_ label: GraphLabel, today: Date, timeZone: TimeZone) -> String {
+        switch label {
+        case .text(let text): return text
+        case .minutesAgo(let offset): return BucketLabels.clockLabel(minutesAgo: offset, today: today, in: timeZone)
+        }
     }
 
     static func warnings(from meta: TopStatsDTO.Meta) -> [ReportWarning] {

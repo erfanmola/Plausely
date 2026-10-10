@@ -60,12 +60,21 @@ struct HomeHeaderPills: View {
                 }
             }
         } label: {
-            Text(selection.selectedSite?.domain ?? "Select a site")
-                .lineLimit(1)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .glassCapsule()
+            HStack(spacing: 6) {
+                Text(selection.selectedSite?.domain ?? "Select a site")
+                    .lineLimit(1)
+                #if os(macOS)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                #endif
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .glassCapsule()
         }
+        .menuIndicator(.hidden)
         .accessibilityIdentifier("home-site")
     }
 }
@@ -94,13 +103,22 @@ struct HomePeriodPill: View {
             // Fixed floor width with centered text: preset names vary
             // from "Today" to "Last 12 months" and the pill must never
             // resize, slide, or hug one edge on selection.
-            Text(HomePeriodPill.name(for: model))
-                .lineLimit(1)
-                .frame(minWidth: 150, alignment: .center)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .glassCapsule()
+            HStack(spacing: 6) {
+                Text(HomePeriodPill.name(for: model))
+                    .lineLimit(1)
+                #if os(macOS)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                #endif
+            }
+            .frame(minWidth: 150, alignment: .center)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .glassCapsule()
         }
+        .menuIndicator(.hidden)
         .accessibilityIdentifier("home-period")
     }
 
@@ -170,11 +188,20 @@ struct HomeOptionsView: View {
             Button("Year over year") { model.setComparison(.yearOverYear) }
             Button("Custom") { model.setComparison(HomeOptionsView.compareDefault(for: model)) }
         } label: {
-            Text(comparisonName)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .glassCapsule()
+            HStack(spacing: 6) {
+                Text(comparisonName)
+                #if os(macOS)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                #endif
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassCapsule()
         }
+        .menuIndicator(.hidden)
         .accessibilityIdentifier("comparison-picker")
     }
 

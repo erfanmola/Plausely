@@ -190,11 +190,20 @@ public struct MetricPickerView: View {
                 .accessibilityIdentifier("metric-option-\(metric.rawValue)")
             }
         } label: {
-            Label(MetricID.descriptor(for: model.selectedMetric).displayName, systemImage: "chart.line.uptrend.xyaxis")
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .glassCapsule()
+            HStack(spacing: 6) {
+                Label(MetricID.descriptor(for: model.selectedMetric).displayName, systemImage: "chart.line.uptrend.xyaxis")
+                #if os(macOS)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                #endif
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassCapsule()
         }
+        .menuIndicator(.hidden)
         .accessibilityIdentifier("metric-picker")
         .sensoryFeedback(.selection, trigger: model.selectedMetric)
     }
