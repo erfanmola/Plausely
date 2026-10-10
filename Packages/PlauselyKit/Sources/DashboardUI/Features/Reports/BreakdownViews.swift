@@ -625,6 +625,23 @@ public struct BreakdownSummaryView: View {
         self.onFilter = onFilter
     }
 
+    /// Top primary-column value across loaded rows: bar widths are shares
+    /// of it. Zero/unknown data yields an empty max and zero fractions.
+    private var maxPrimaryValue: Double {
+        guard let primary = model.definition.columns.first else { return 0 }
+        return model.rows.compactMap { row in
+            row.metrics[primary].flatMap(SeriesPoints.plotDouble)
+        }.max() ?? 0
+    }
+
+    private func barFraction(_ row: BreakdownRow, ceiling: Double) -> Double {
+        guard ceiling > 0,
+              let primary = model.definition.columns.first,
+              let value = row.metrics[primary].flatMap(SeriesPoints.plotDouble)
+        else { return 0 }
+        return Swift.max(0, Swift.min(1, value / ceiling))
+    }
+
     public var body: some View {
         let prefix = model.definition.idPrefix
         VStack(alignment: .leading, spacing: 4) {
@@ -644,21 +661,38 @@ public struct BreakdownSummaryView: View {
                     .accessibilityIdentifier("\(prefix)-summary-error")
             default:
                 ForEach(Array(model.rows.prefix(previewCount).enumerated()), id: \.offset) { index, row in
-                    HStack(spacing: 8) {
-                        RowGlyph(definition: model.definition, row: row)
-                        Text(row.name)
-                            .lineLimit(1)
-                        Spacer()
-                        if let primary = model.definition.columns.first,
-                           let value = row.metrics[primary]
-                        {
-                            Text(formatter.string(for: value, as: primary))
-                                .foregroundStyle(.secondary)
-                                .monospacedDigit()
-                                .contentTransition(.numericText())
-                                .animation(.snappy, value: value)
-                            BreakdownChangeBadge(row: row, metric: primary, prefix: "\(prefix)-summary", index: index)
+                    // Full-width proportional bar (dashboard style): width
+                    // encodes share of the top row, name rides inside,
+                    // exact value stays right-aligned text.
+                    let fraction = barFraction(row, ceiling: maxPrimaryValue)
+                    ZStack(alignment: .leading) {
+                        GeometryReader { proxy in
+                            Capsule(style: .continuous)
+                                .fill(HomeStyle.barFill)
+                                .frame(
+                                    width: max(64, proxy.size.width * fraction),
+                                    height: 46
+                                )
+                                .accessibilityHidden(true)
                         }
+                        .frame(height: 46)
+                        HStack(spacing: 8) {
+                            RowGlyph(definition: model.definition, row: row)
+                            Text(row.name)
+                                .lineLimit(1)
+                            Spacer(minLength: 8)
+                            if let primary = model.definition.columns.first,
+                               let value = row.metrics[primary]
+                            {
+                                Text(formatter.string(for: value, as: primary))
+                                    .fontWeight(.semibold)
+                                    .monospacedDigit()
+                                    .contentTransition(.numericText())
+                                    .animation(.snappy, value: value)
+                                BreakdownChangeBadge(row: row, metric: primary, prefix: "\(prefix)-summary", index: index)
+                            }
+                        }
+                        .padding(.horizontal, 14)
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("\(prefix)-summary-\(index)")

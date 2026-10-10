@@ -49,6 +49,8 @@ public struct HomeRootView: View {
     /// Per-site visitors preview for the picker list. Failures degrade to
     /// the plain row; never fake data.
     private let sparkline: ((SiteRef, AccountID) async -> TimeSeries?)?
+    /// Per-site query controls plus last active site, persisted locally.
+    private let preferences: SitePreferences
     @State private var generation: UInt64 = 0
 
     public init(
@@ -64,7 +66,8 @@ public struct HomeRootView: View {
         resolveBase: (@MainActor (DashboardQuery) async -> DashboardQuery)? = nil,
         applyLock: (@MainActor (QueryModel) async -> Void)? = nil,
         resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)? = nil,
-        sparkline: ((SiteRef, AccountID) async -> TimeSeries?)? = nil
+        sparkline: ((SiteRef, AccountID) async -> TimeSeries?)? = nil,
+        preferences: SitePreferences = SitePreferences()
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -80,6 +83,7 @@ public struct HomeRootView: View {
         self.applyLock = applyLock
         self.resolvePolicy = resolvePolicy
         self.sparkline = sparkline
+        self.preferences = preferences
     }
 
     public var body: some View {
@@ -118,6 +122,7 @@ public struct HomeRootView: View {
             rebuildModels(for: query)
         }
         .onChange(of: queryModel?.effective) {
+            saveControls()
             updateRealtimeTick()
         }
         .task {
@@ -126,6 +131,16 @@ public struct HomeRootView: View {
     }
 
     // MARK: - Wiring (mirrors the legacy roots; only loaders differ)
+
+    /// Persists the working controls per site so revisits restore them.
+    private func saveControls() {
+        guard let queryModel, let effective = queryModel.effective else { return }
+        preferences.saveControls(
+            StoredControls(model: queryModel),
+            account: effective.accountID,
+            domain: effective.siteID.domain
+        )
+    }
 
     private var childFactory: BreakdownChildFactory? {
         let loader = breakdownLoader
@@ -168,6 +183,9 @@ public struct HomeRootView: View {
             let policy = await resolvePolicy?(base)
             let queryModel = QueryModel(base: base, suggestions: suggestions, segmentList: segmentList, intervalPolicy: policy)
             await applyLock?(queryModel)
+            if let stored = preferences.controls(account: base.accountID, domain: base.siteID.domain) {
+                queryModel.applyStored(stored)
+            }
             guard current == generation else { return }
             let effective = queryModel.effective ?? base
             self.queryModel = queryModel

@@ -71,45 +71,6 @@ struct HomePill<Label: View, MenuItems: View>: View {
     }
 }
 
-/// One proportional bar row: lavender fill sized by share of the top value,
-/// name (plus optional flag) at leading, exact value at trailing. The fill
-/// is decorative; name and value stay real text for VoiceOver.
-struct HomeBarRow: View {
-    let name: String
-    let flag: String?
-    let valueText: String
-    let fraction: Double
-    let prefix: String
-    let index: Int
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            GeometryReader { proxy in
-                Capsule(style: .continuous)
-                    .fill(HomeStyle.barFill)
-                    .frame(width: max(56, proxy.size.width * max(0, min(1, fraction))), height: 46)
-                    .accessibilityHidden(true)
-            }
-            .frame(height: 46)
-            HStack(spacing: 8) {
-                if let flag {
-                    Text(flag)
-                        .accessibilityHidden(true)
-                }
-                Text(name)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                Text(valueText)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-            }
-            .padding(.horizontal, 14)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("\(prefix)-\(index)")
-    }
-}
-
 /// Capsule control treatment: Liquid Glass where the floor allows it,
 /// the card capsule before that. Content supplies its own padding; the
 /// shape hugs it either way.

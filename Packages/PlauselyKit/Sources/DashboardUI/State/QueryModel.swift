@@ -265,6 +265,19 @@ public final class QueryModel {
         }
     }
 
+    /// Restores persisted per-site controls (period, comparison, toggles)
+    /// onto a fresh model, e.g. when revisiting a site. One revalidation
+    /// at the end; unsupported pairings degrade per the stored rules.
+    public func applyStored(_ stored: StoredControls) {
+        let resolved = stored.makePeriod()
+        period = resolved
+        periodDate = stored.periodDate
+        comparison = stored.makeComparison(for: resolved)
+        matchDayOfWeek = stored.matchDayOfWeek
+        includeImported = stored.includeImported
+        refresh()
+    }
+
     private func build() throws -> DashboardQuery {
         let merged = locked.clauses + clauses
         try validate(clauses: merged, period: period, comparison: comparison)

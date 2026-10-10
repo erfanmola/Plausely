@@ -122,10 +122,16 @@ public final class SiteSelectionModel {
 
     private let directory: SiteDirectory
     private let pinned: PinnedSites
+    private let preferences: SitePreferences
 
-    public init(directory: SiteDirectory, pinned: PinnedSites = PinnedSites()) {
+    public init(
+        directory: SiteDirectory,
+        pinned: PinnedSites = PinnedSites(),
+        preferences: SitePreferences = SitePreferences()
+    ) {
         self.directory = directory
         self.pinned = pinned
+        self.preferences = preferences
     }
 
     public var selectedAccount: AccountRef? {
@@ -179,6 +185,9 @@ public final class SiteSelectionModel {
     public func loadAccounts() async {
         let loaded = await directory.accounts()
         accounts = loaded
+        if selectedAccountID == nil, await restoreLastSite(from: loaded) {
+            return
+        }
         if selectedAccountID == nil {
             selectedAccountID = loaded.first?.id
         } else if loaded.allSatisfy({ $0.id != selectedAccountID }) {
@@ -198,10 +207,31 @@ public final class SiteSelectionModel {
     public func selectSite(_ domain: String?) {
         selectedDomain = domain
         query = defaultQuery()
+        if let domain, let account = selectedAccount {
+            preferences.saveLastSite(account: account.id, domain: domain)
+        }
     }
 
     public func retrySites() async {
         await reloadSites()
+    }
+
+    /// Reopens the last active site when it still exists. Mock
+    /// directories mint fresh account IDs per launch, so this path only
+    /// ever fires against stable production identities.
+    private func restoreLastSite(from loaded: [AccountRef]) async -> Bool {
+        guard let last = preferences.lastSite(),
+              let account = loaded.first(where: { $0.id.rawValue == last.account }),
+              let sites = try? await directory.sites(for: account),
+              sites.contains(where: { $0.domain == last.domain })
+        else { return false }
+        selectedAccountID = account.id
+        self.sites = sites
+        sitesError = nil
+        sitesLoading = false
+        refreshPinnedOrder()
+        selectSite(last.domain)
+        return true
     }
 
     // MARK: - Internals

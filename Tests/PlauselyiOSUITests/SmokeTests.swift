@@ -620,3 +620,4 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 20))
     }
 }
+

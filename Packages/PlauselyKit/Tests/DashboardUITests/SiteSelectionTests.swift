@@ -172,3 +172,101 @@ struct SitePinningTests {
         #expect(model.pinnedSites.map(\.domain) == ["alpha-1.example.com"])
     }
 }
+
+private struct StableDirectory: SiteDirectory, Sendable {
+    let account = AccountRef(
+        id: AccountID(rawValue: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!),
+        baseURL: URL(string: "https://stats.example.com")!,
+        email: "owner@example.com"
+    )
+    let sites = [
+        SiteRef(domain: "one.example.com", teamID: "t", teamName: "T", role: "owner"),
+        SiteRef(domain: "two.example.com", teamID: "t", teamName: "T", role: "owner"),
+    ]
+    func accounts() async -> [AccountRef] { [account] }
+    func sites(for account: AccountRef) async throws -> [SiteRef] { sites }
+}
+
+@Suite("site preferences")
+@MainActor
+struct SitePreferencesTests {
+    private func ephemeral() -> UserDefaults {
+        let suite = UserDefaults(suiteName: "plausely-prefs-tests")!
+        suite.removePersistentDomain(forName: "plausely-prefs-tests")
+        return suite
+    }
+
+    @Test("controls round-trip through the store")
+    func controlsRoundTrip() {
+        let prefs = SitePreferences(defaults: ephemeral())
+        let account = AccountID()
+        let stored = StoredControls(period: "7d", comparison: "previous_period", matchDayOfWeek: false, includeImported: true)
+        prefs.saveControls(stored, account: account, domain: "shop.example")
+        #expect(prefs.controls(account: account, domain: "shop.example") == stored)
+        #expect(prefs.controls(account: account, domain: "other.example") == nil)
+    }
+
+    @Test("unknown values degrade to safe defaults")
+    func sanitize() {
+        #expect(StoredControls(period: "nonsense").makePeriod() == .days28)
+        #expect(StoredControls(period: "day", comparison: "previous_period").makeComparison(for: .realtime) == .off)
+        #expect(StoredControls(period: "day", comparison: "bogus").makeComparison(for: .day) == .off)
+        #expect(StoredControls(period: "custom").makePeriod() == .days28)
+        let custom = StoredControls(period: "custom", customFrom: Date(timeIntervalSince1970: 100), customTo: Date(timeIntervalSince1970: 200))
+        #expect(custom.makePeriod() == .custom(from: Date(timeIntervalSince1970: 100), to: Date(timeIntervalSince1970: 200)))
+    }
+
+    @Test("last active site restores on launch when still present")
+    func lastSiteRestore() async {
+        let prefs = SitePreferences(defaults: ephemeral())
+        let first = SiteSelectionModel(directory: StableDirectory(), preferences: prefs)
+        await first.loadAccounts()
+        #expect(first.selectedDomain == nil)
+        first.selectSite("two.example.com")
+        #expect(first.selectedDomain == "two.example.com")
+        let revived = SiteSelectionModel(directory: StableDirectory(), preferences: prefs)
+        await revived.loadAccounts()
+        #expect(revived.selectedDomain == "two.example.com")
+        #expect(revived.query?.siteID.domain == "two.example.com")
+    }
+
+    @Test("vanished last site falls back to no selection")
+    func lastSiteVanished() async {
+        struct EmptyStable: SiteDirectory, Sendable {
+            let wrapped = StableDirectory()
+            func accounts() async -> [AccountRef] { await [wrapped.account] }
+            func sites(for account: AccountRef) async throws -> [SiteRef] { [] }
+        }
+        let prefs = SitePreferences(defaults: ephemeral())
+        let first = SiteSelectionModel(directory: StableDirectory(), preferences: prefs)
+        await first.loadAccounts()
+        first.selectSite("two.example.com")
+        let revived = SiteSelectionModel(directory: EmptyStable(), preferences: prefs)
+        await revived.loadAccounts()
+        #expect(revived.selectedDomain == nil)
+    }
+
+    @Test("query model applies stored controls")
+    func applyStored() throws {
+        let model = QueryModel(base: baseQueryLike(), intervalPolicy: MockQueryProviders.intervals)
+        model.applyStored(StoredControls(period: "7d", comparison: "previous_period"))
+        let query = try #require(model.effective)
+        #expect(query.period == .days7)
+        #expect(query.comparison == .previousPeriod)
+        #expect(query.interval == .day)
+    }
+
+    private func baseQueryLike() -> DashboardQuery {
+        DashboardQuery(
+            accountID: AccountID(),
+            siteID: SiteID(domain: "shop.example"),
+            period: .days28,
+            comparison: .off,
+            filters: .empty,
+            includeImported: false,
+            interval: .day,
+            selectedMetric: .visitors,
+            timeZone: TimeZone(identifier: "UTC")!
+        )
+    }
+}

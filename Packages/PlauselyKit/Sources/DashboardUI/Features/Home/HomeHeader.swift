@@ -30,6 +30,17 @@ struct HomeHeaderPills: View {
                     }
                 }
             }
+            if !selection.pinnedSites.isEmpty {
+                Section("Pinned") {
+                    ForEach(selection.pinnedSites, id: \.domain) { site in
+                        Button {
+                            selection.selectSite(site.domain)
+                        } label: {
+                            Label(site.domain, systemImage: "star.fill")
+                        }
+                    }
+                }
+            }
             Section("Sites") {
                 ForEach(selection.sites, id: \.domain) { site in
                     Button(site.domain) {
