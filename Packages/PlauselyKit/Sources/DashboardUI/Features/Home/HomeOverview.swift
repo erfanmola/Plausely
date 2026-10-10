@@ -15,7 +15,7 @@ public struct HomeHeroView: View {
 
     public var body: some View {
         VStack(spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
                 LivePulseDot(active: model.count != nil, reduceMotion: reduceMotion)
                 if let count = model.count {
                     Text(formatter.string(for: .count(Int64(count)), as: .visitors))
@@ -29,13 +29,19 @@ public struct HomeHeroView: View {
                         .frame(width: 160)
                         .accessibilityIdentifier("home-hero-loading")
                 }
+                // Invisible balance for the dot: the number lands on true
+                // center instead of sitting right of it.
+                Color.clear
+                    .frame(width: 30, height: 30)
+                    .accessibilityHidden(true)
             }
             Text("current visitors")
                 .font(.title3)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
                 .accessibilityIdentifier("home-hero-label")
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 8)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-hero")

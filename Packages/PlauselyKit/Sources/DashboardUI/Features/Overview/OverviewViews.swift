@@ -277,7 +277,9 @@ public struct SeriesChartView: View {
             }
             .chartXSelection(value: $selection)
             .chartXAxis {
-                AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                // Explicit stride caps labels at ~6 so bucket texts can
+                // never collide, however many buckets the period packs.
+                AxisMarks(values: strideLabels) { value in
                     AxisGridLine()
                     AxisValueLabel {
                         if let raw = value.as(String.self) {
@@ -370,6 +372,12 @@ public struct SeriesChartView: View {
 
     private var primaryRuns: [PointRun] {
         runs(value: \.value).map { PointRun(points: $0, kind: .primary) }
+    }
+
+    /// Every Nth bucket label, capped so at most ~6 land on the axis.
+    private var strideLabels: [String] {
+        let stride = max(1, (points.count + 5) / 6)
+        return points.enumerated().filter { $0.offset % stride == 0 }.map(\.element.label)
     }
 
     private var comparisonRuns: [PointRun] {

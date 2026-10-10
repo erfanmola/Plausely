@@ -21,6 +21,17 @@ struct HomeHeaderPills: View {
 
     private var sitePill: some View {
         Menu {
+            // Escape hatch back to the full list: clearing the selection
+            // is the only way to reach the picker (and its pin toggles)
+            // once a site is open.
+            if selection.selectedSite != nil {
+                Button {
+                    selection.selectSite(nil)
+                } label: {
+                    Label("All Sites", systemImage: "list.bullet")
+                }
+                .accessibilityIdentifier("site-menu-all-sites")
+            }
             if selection.accounts.count > 1 {
                 Section("Instance") {
                     ForEach(selection.accounts, id: \.id) { account in

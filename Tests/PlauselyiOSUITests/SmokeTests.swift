@@ -619,5 +619,15 @@ final class SiteShellTests: XCTestCase {
         tap("site-option-beta-1.example.org")
         XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 20))
     }
-}
 
+    func testDeselectReturnsToPicker() throws {
+        launch()
+        openSite()
+        XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 20))
+        // The menu's escape hatch drops the selection and lands back
+        // on the full picker, where pin toggles live.
+        pillTap()
+        selectOption("All Sites")
+        XCTAssertTrue(element("site-picker-title").waitForExistence(timeout: 15))
+    }
+}
