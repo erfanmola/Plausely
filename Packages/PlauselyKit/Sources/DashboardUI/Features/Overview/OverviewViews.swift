@@ -375,9 +375,9 @@ public struct SeriesChartView: View {
         runs(value: \.value).map { PointRun(points: $0, kind: .primary) }
     }
 
-    /// Every Nth bucket label, capped so at most ~6 land on the axis.
+    /// Every Nth bucket label, capped so at most ~5 land on the axis.
     private var strideLabels: [String] {
-        let stride = max(1, (points.count + 5) / 6)
+        let stride = max(1, (points.count + 4) / 5)
         return points.enumerated().filter { $0.offset % stride == 0 }.map(\.element.label)
     }
 

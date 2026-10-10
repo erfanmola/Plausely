@@ -71,20 +71,32 @@ struct HomePill<Label: View, MenuItems: View>: View {
     }
 }
 
-/// Capsule control treatment: frosted system material on every floor.
-/// (Liquid Glass `glassEffect` needs the iOS 26 SDK, which our CI
-/// toolchain lacks — materials render natively everywhere instead.)
+/// Capsule control treatment: Liquid Glass where the floor allows it,
+/// the frosted material before that (and on CI toolchains whose SDK
+/// predates glass). Content supplies its own padding; the shape hugs
+/// it either way. Plain glass, never interactive: the morph distortion
+/// visibly jumps menu pills on present/dismiss.
 extension View {
+    @ViewBuilder
     func glassCapsule() -> some View {
-        self.background(.thinMaterial, in: Capsule(style: .continuous))
+        if #available(iOS 26, macOS 26, *) {
+            self.glassEffect(.regular, in: Capsule())
+        } else {
+            self.background(.thinMaterial, in: Capsule(style: .continuous))
+        }
     }
 }
 
-/// Frosted-glass tile for glyph marks (monograms): system material on
-/// every floor, quiet system fill only where materials can't go.
+/// Frosted-glass tile for glyph marks (monograms): Liquid Glass where
+/// the floor allows it, quiet system fill before that.
 extension View {
+    @ViewBuilder
     func glassTile(cornerRadius: CGFloat = 12) -> some View {
-        self.background(.thinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        if #available(iOS 26, macOS 26, *) {
+            self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        } else {
+            self.background(.quaternary, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
     }
 }
 
