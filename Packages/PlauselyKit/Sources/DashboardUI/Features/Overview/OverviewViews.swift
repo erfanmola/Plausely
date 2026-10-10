@@ -278,19 +278,22 @@ public struct SeriesChartView: View {
             .chartXSelection(value: $selection)
             .chartXScale(range: .plotDimension(startPadding: 0, endPadding: 0))
             .chartXAxis {
-                // Explicit stride caps labels at ~6 so bucket texts can
-                // never collide, however many buckets the period packs.
+                // Labels render only for strided positions: explicit value
+                // lists are not honored for string categories, so the
+                // content gate (not the values list) is what caps labels.
+                // Gridlines follow the same gate, so sparse buckets never
+                // drown in lines either.
                 AxisMarks(values: strideLabels) { value in
-                    AxisGridLine()
-                    AxisValueLabel {
-                        if let raw = value.as(String.self) {
+                    if let raw = value.as(String.self), strideSet.contains(raw) {
+                        AxisGridLine()
+                        AxisValueLabel {
                             Text(displayLabel(raw))
                         }
                     }
                 }
             }
             .chartYAxis {
-                AxisMarks(preset: .aligned, position: .trailing, values: .automatic(desiredCount: 4))
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 4))
             }
             .frame(minHeight: 170)
             .accessibilityIdentifier("series-chart")
@@ -376,10 +379,14 @@ public struct SeriesChartView: View {
     }
 
     /// Every Nth bucket label, capped so at most ~6 land on the axis.
+    /// Matched by content (not just the values list) so labels can
+    /// never collide however the axis resolves marks.
     private var strideLabels: [String] {
         let stride = max(1, (points.count + 5) / 6)
         return points.enumerated().filter { $0.offset % stride == 0 }.map(\.element.label)
     }
+
+    private var strideSet: Set<String> { Set(strideLabels) }
 
     private var comparisonRuns: [PointRun] {
         guard points.contains(where: { $0.comparison != nil }) else { return [] }

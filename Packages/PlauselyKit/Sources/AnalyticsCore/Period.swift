@@ -92,10 +92,11 @@ public struct IntervalPolicy: Hashable, Sendable {
     }
 
     /// Dashboard-faithful current interval (mirrors `interval-picker.tsx`
-    /// `getCurrentInterval`): keep `current` when valid for the period;
-    /// otherwise fall back to the dashboard default. The bootstrap map
-    /// stays authoritative for validity; the default table only picks
-    /// among valid entries.
+    /// `getCurrentInterval`/`getDefaultInterval`): keep `current` when
+    /// valid for the period; otherwise the dashboard default table wins
+    /// even when the bootstrap map omits it (upstream sends the table
+    /// default blindly); last resort is the first valid map entry. The
+    /// bootstrap map stays authoritative for validity checks.
     public func currentInterval(
         _ current: ChartInterval,
         for period: Period,
@@ -105,8 +106,9 @@ public struct IntervalPolicy: Hashable, Sendable {
     ) -> ChartInterval {
         let options = validIntervals(for: period, periodDate: periodDate, timeZone: timeZone, today: today)
         if options.contains(current) { return current }
-        if let fallback = defaultInterval(for: period, periodDate: periodDate, timeZone: timeZone, today: today),
-           options.contains(fallback) { return fallback }
+        if let fallback = defaultInterval(for: period, periodDate: periodDate, timeZone: timeZone, today: today) {
+            return fallback
+        }
         return options.first ?? current
     }
 

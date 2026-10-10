@@ -53,9 +53,16 @@ struct IntervalPolicyTests {
         #expect(fullPolicy.currentInterval(.day, for: .custom(from: frozen, to: long), timeZone: utc, today: frozen) == .month)
     }
 
-    @Test("unknown periods keep the current interval")
-    func unknownKeeps() {
+    @Test("table default applies even with a sparse map")
+    func sparseMapDefault() {
         let sparse = IntervalPolicy(validByPeriod: ["28d": [.day]])
-        #expect(sparse.currentInterval(.week, for: .year, timeZone: utc, today: frozen) == .week)
+        #expect(sparse.currentInterval(.week, for: .year, timeZone: utc, today: frozen) == .month)
+        #expect(sparse.currentInterval(.week, for: .month, timeZone: utc, today: frozen) == .week)
+    }
+
+    @Test("dashboard table default wins even when the map omits it")
+    func blindDefault() {
+        let minuteOnly = IntervalPolicy(validByPeriod: ["day": [.minute]])
+        #expect(minuteOnly.currentInterval(.day, for: .day, timeZone: utc, today: frozen) == .hour)
     }
 }
