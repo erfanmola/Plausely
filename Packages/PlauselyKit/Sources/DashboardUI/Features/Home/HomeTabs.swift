@@ -11,7 +11,7 @@ struct HomeOverviewTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 HomeHeaderPills(selection: selection, queryModel: queryModel)
                 if !selection.booted {
                     // First paint: shimmer for the directory + restore,

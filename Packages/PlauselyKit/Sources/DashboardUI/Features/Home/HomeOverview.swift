@@ -42,7 +42,6 @@ public struct HomeHeroView: View {
                 .accessibilityIdentifier("home-hero-label")
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-hero")
         .sensoryFeedback(.selection, trigger: model.count)
@@ -146,7 +145,7 @@ public struct HomeMetricCards: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
         .background(HomeStyle.card, in: RoundedRectangle(cornerRadius: HomeStyle.corner, style: .continuous))
         // Plain group: no identifier here — a parent-applied id (the
         // shared report-value stamp) would overwrite a group id, so tests

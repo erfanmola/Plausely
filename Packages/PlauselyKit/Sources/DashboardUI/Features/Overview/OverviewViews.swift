@@ -295,7 +295,7 @@ public struct SeriesChartView: View {
             .chartYAxis {
                 AxisMarks(position: .trailing, values: .automatic(desiredCount: 4))
             }
-            .frame(minHeight: 170)
+            .frame(minHeight: 150)
             .accessibilityIdentifier("series-chart")
             .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(points.count) buckets")
             .accessibilityChartDescriptor(SeriesChartDescriptor(
