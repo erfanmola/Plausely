@@ -36,7 +36,7 @@ struct IntervalPolicyTests {
         #expect(fullPolicy.currentInterval(.day, for: .day, timeZone: utc, today: frozen) == .hour)
         #expect(fullPolicy.currentInterval(.day, for: .realtime, timeZone: utc, today: frozen) == .minute)
         #expect(fullPolicy.currentInterval(.day, for: .days7, timeZone: utc, today: frozen) == .day)
-        #expect(fullPolicy.currentInterval(.day, for: .months12, timeZone: utc, today: frozen) == .day)
+        #expect(fullPolicy.currentInterval(.day, for: .months12, timeZone: utc, today: frozen) == .month)
         #expect(fullPolicy.currentInterval(.hour, for: .months12, timeZone: utc, today: frozen) == .month)
         #expect(fullPolicy.currentInterval(.hour, for: .days28, timeZone: utc, today: frozen) == .day)
     }
@@ -49,7 +49,7 @@ struct IntervalPolicyTests {
         let medium = calendar.date(byAdding: .day, value: 60, to: frozen)!
         let long = calendar.date(byAdding: .day, value: 400, to: frozen)!
         #expect(fullPolicy.currentInterval(.month, for: .custom(from: frozen, to: short), timeZone: utc, today: frozen) == .day)
-        #expect(fullPolicy.currentInterval(.day, for: .custom(from: frozen, to: medium), timeZone: utc, today: frozen) == .day)
+        #expect(fullPolicy.currentInterval(.day, for: .custom(from: frozen, to: medium), timeZone: utc, today: frozen) == .week)
         #expect(fullPolicy.currentInterval(.day, for: .custom(from: frozen, to: long), timeZone: utc, today: frozen) == .month)
     }
 
@@ -64,5 +64,12 @@ struct IntervalPolicyTests {
     func blindDefault() {
         let minuteOnly = IntervalPolicy(validByPeriod: ["day": [.minute]])
         #expect(minuteOnly.currentInterval(.day, for: .day, timeZone: utc, today: frozen) == .hour)
+    }
+
+    @Test("realtime minute never leaks into day periods")
+    func realtimeDoesNotLeak() {
+        #expect(fullPolicy.currentInterval(.minute, for: .day, timeZone: utc, today: frozen) == .hour)
+        #expect(fullPolicy.currentInterval(.hour, for: .realtime, timeZone: utc, today: frozen) == .minute)
+        #expect(fullPolicy.currentInterval(.minute, for: .days28, timeZone: utc, today: frozen) == .day)
     }
 }
