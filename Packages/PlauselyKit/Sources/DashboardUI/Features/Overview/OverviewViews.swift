@@ -276,6 +276,7 @@ public struct SeriesChartView: View {
                 }
             }
             .chartXSelection(value: $selection)
+            .chartXScale(range: .plotDimension(startPadding: 0, endPadding: 0))
             .chartXAxis {
                 // Explicit stride caps labels at ~6 so bucket texts can
                 // never collide, however many buckets the period packs.
@@ -289,7 +290,7 @@ public struct SeriesChartView: View {
                 }
             }
             .chartYAxis {
-                AxisMarks(preset: .aligned, position: .leading, values: .automatic(desiredCount: 4))
+                AxisMarks(preset: .aligned, position: .trailing, values: .automatic(desiredCount: 4))
             }
             .frame(minHeight: 180)
             .accessibilityIdentifier("series-chart")

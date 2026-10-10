@@ -129,6 +129,7 @@ struct MiniSparkline: View {
                 }
                 .foregroundStyle(Color.accentColor.opacity(0.25))
             }
+            .chartXScale(range: .plotDimension(startPadding: 0, endPadding: 0))
             .chartXAxis(.hidden)
             .chartYAxis(.hidden)
             .accessibilityHidden(true)
