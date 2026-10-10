@@ -73,14 +73,28 @@ struct HomePill<Label: View, MenuItems: View>: View {
 
 /// Capsule control treatment: Liquid Glass where the floor allows it,
 /// the card capsule before that. Content supplies its own padding; the
-/// shape hugs it either way.
+/// shape hugs it either way. Plain glass, never interactive: the morph
+/// distortion visibly jumps menu pills on present/dismiss.
 extension View {
     @ViewBuilder
     func glassCapsule() -> some View {
         if #available(iOS 26, macOS 26, *) {
-            self.glassEffect(.regular.interactive(), in: Capsule())
+            self.glassEffect(.regular, in: Capsule())
         } else {
             self.background(HomeStyle.card, in: Capsule(style: .continuous))
+        }
+    }
+}
+
+/// Frosted-glass tile for glyph marks (monograms): Liquid Glass where
+/// the floor allows it, quiet system fill before that.
+extension View {
+    @ViewBuilder
+    func glassTile(cornerRadius: CGFloat = 12) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            self.glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        } else {
+            self.background(.quaternary, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
 }

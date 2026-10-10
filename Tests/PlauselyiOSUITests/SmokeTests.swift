@@ -631,3 +631,4 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("site-picker-title").waitForExistence(timeout: 15))
     }
 }
+

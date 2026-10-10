@@ -2,33 +2,25 @@ import AnalyticsCore
 import Charts
 import SwiftUI
 
-/// Domain monogram: first letter on a stable tinted squircle. Offline and
-/// deterministic (stable hash, never `hashValue`), so a site keeps its
-/// mark across launches. Decorative; rows carry the accessible names.
+/// Domain monogram: frosted-glass squircle with the site initial, in the
+/// iOS 26 clear-icon spirit (monochrome, depth from the material, not
+/// from color). Offline and deterministic. Decorative; rows carry the
+/// accessible names.
 struct SiteMonogram: View {
     let domain: String
-    private static let tints: [Color] = [.blue, .green, .orange, .red, .teal, .pink, .cyan, .mint, .brown]
 
     var body: some View {
         Text(letter)
             .font(.headline)
             .bold()
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .frame(width: 40, height: 40)
-            .background(tint.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .glassTile(cornerRadius: 12)
             .accessibilityHidden(true)
     }
 
     private var letter: String {
         domain.first(where: { $0.isLetter || $0.isNumber }).map { String($0).uppercased() } ?? "•"
-    }
-
-    private var tint: Color {
-        var hash = 5381
-        for scalar in domain.unicodeScalars {
-            hash = ((hash << 5) &+ hash) &+ Int(scalar.value)
-        }
-        return Self.tints[abs(hash) % Self.tints.count]
     }
 }
 
@@ -73,8 +65,12 @@ struct SiteRowView: View {
                 .accessibilityIdentifier("site-option-\(site.domain)")
                 Button(action: onTogglePin) {
                     Image(systemName: pinned ? "star.fill" : "star")
+                        .font(.title3)
                         .foregroundStyle(pinned ? .yellow : .secondary)
-                        .frame(width: 28, height: 28)
+                        .symbolEffect(.bounce, value: pinned)
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityIdentifier("site-pin-\(site.domain)")
                 .accessibilityLabel(pinned ? "Unpin \(site.domain)" : "Pin \(site.domain)")
@@ -151,8 +147,7 @@ struct SitePickerView: View {
     @State private var filter = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {            VStack(alignment: .leading, spacing: 4) {
                 Text("Choose a site")
                     .font(.title2)
                     .bold()
@@ -233,9 +228,14 @@ struct SitePickerView: View {
             account: selection.selectedAccount,
             pinned: selection.isPinned(site.domain),
             onSelect: { selection.selectSite(site.domain) },
-            onTogglePin: { selection.setPinned(site.domain, pinned: !selection.isPinned(site.domain)) },
+            onTogglePin: {
+                withAnimation(.snappy) {
+                    selection.setPinned(site.domain, pinned: !selection.isPinned(site.domain))
+                }
+            },
             sparkline: sparkline
         )
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private var visiblePinned: [SiteRef] {

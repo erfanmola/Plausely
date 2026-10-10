@@ -91,8 +91,12 @@ struct HomePeriodPill: View {
             Button("All time") { model.setPeriod(.all) }
             Button("Custom range") { model.setPeriod(HomePeriodPill.customDefault(for: model)) }
         } label: {
+            // Fixed floor width, trailing text: preset names vary from
+            // "Today" to "Last 12 months" and the pill must never resize
+            // or slide its neighbors on selection.
             Text(HomePeriodPill.name(for: model))
                 .lineLimit(1)
+                .frame(minWidth: 150, alignment: .trailing)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
                 .glassCapsule()

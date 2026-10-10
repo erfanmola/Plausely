@@ -28,7 +28,9 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
                     .accessibilityIdentifier("report-idle")
             case .loading(let stale):
                 VStack {
-                    SkeletonBlocks(rows: 3)
+                    // Skeleton approximates loaded height so surfaces
+                    // don't collapse and jump while reports reload.
+                    SkeletonBlocks(rows: 6, rowHeight: 22)
                         .accessibilityIdentifier("report-loading")
                     if let stale {
                         staleBadge
