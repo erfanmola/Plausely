@@ -19,7 +19,7 @@ public struct HomeHeroView: View {
                 LivePulseDot(active: model.count != nil, reduceMotion: reduceMotion)
                 if let count = model.count {
                     Text(formatter.string(for: .count(Int64(count)), as: .visitors))
-                        .font(.system(size: 64, weight: .bold))
+                        .font(.system(size: 56, weight: .bold))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .animation(.snappy, value: count)
@@ -42,7 +42,7 @@ public struct HomeHeroView: View {
                 .accessibilityIdentifier("home-hero-label")
         }
         .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home-hero")
         .sensoryFeedback(.selection, trigger: model.count)
@@ -146,7 +146,7 @@ public struct HomeMetricCards: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
         .background(HomeStyle.card, in: RoundedRectangle(cornerRadius: HomeStyle.corner, style: .continuous))
         // Plain group: no identifier here — a parent-applied id (the
         // shared report-value stamp) would overwrite a group id, so tests

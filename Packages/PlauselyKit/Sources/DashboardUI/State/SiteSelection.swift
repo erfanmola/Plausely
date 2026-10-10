@@ -119,6 +119,10 @@ public final class SiteSelectionModel {
     /// The window's query, rebuilt from the default template on every site
     /// selection. Period/metric controls (04.3) edit a copy, never this.
     public private(set) var query: DashboardQuery?
+    /// First directory load finished (sites known, restore attempted).
+    /// Views show a boot shimmer until this flips, never a premature
+    /// empty picker.
+    public private(set) var booted = false
 
     private let directory: SiteDirectory
     private let pinned: PinnedSites
@@ -183,6 +187,7 @@ public final class SiteSelectionModel {
     }
 
     public func loadAccounts() async {
+        defer { booted = true }
         let loaded = await directory.accounts()
         accounts = loaded
         if selectedAccountID == nil, await restoreLastSite(from: loaded) {

@@ -11,9 +11,21 @@ struct HomeOverviewTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 12) {
                 HomeHeaderPills(selection: selection, queryModel: queryModel)
-                if let queryModel {
+                if !selection.booted {
+                    // First paint: shimmer for the directory + restore,
+                    // never a premature empty picker.
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Loading…")
+                            .font(.title2)
+                            .bold()
+                            .foregroundStyle(.secondary)
+                        SkeletonBlocks(rows: 8, rowHeight: 56)
+                    }
+                    .accessibilityIdentifier("home-boot")
+                    .padding(.top, 8)
+                } else if let queryModel {
                     HomeHeroView(model: realtimeModel)
                     // Reports need a runnable effective query; controls
                     // stay mounted on rejected combos so the typed error

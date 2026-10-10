@@ -220,7 +220,9 @@ struct SitePreferencesTests {
     func lastSiteRestore() async {
         let prefs = SitePreferences(defaults: ephemeral())
         let first = SiteSelectionModel(directory: StableDirectory(), preferences: prefs)
+        #expect(first.booted == false)
         await first.loadAccounts()
+        #expect(first.booted == true)
         #expect(first.selectedDomain == nil)
         first.selectSite("two.example.com")
         #expect(first.selectedDomain == "two.example.com")
