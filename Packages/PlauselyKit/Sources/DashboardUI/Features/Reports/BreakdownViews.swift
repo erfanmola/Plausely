@@ -636,7 +636,7 @@ public struct BreakdownSummaryView: View {
             }
             switch model.state {
             case .idle, .loading where model.rows.isEmpty:
-                ProgressView()
+                SkeletonBlocks(rows: 5, rowHeight: 22)
                     .accessibilityIdentifier("\(prefix)-summary-loading")
             case .failed where model.rows.isEmpty:
                 Text("Couldn't load \(model.definition.title.lowercased()).")

@@ -28,7 +28,7 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
                     .accessibilityIdentifier("report-idle")
             case .loading(let stale):
                 VStack {
-                    ProgressView()
+                    SkeletonBlocks(rows: 3)
                         .accessibilityIdentifier("report-loading")
                     if let stale {
                         staleBadge

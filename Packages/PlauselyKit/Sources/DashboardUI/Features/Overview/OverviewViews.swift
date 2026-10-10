@@ -292,6 +292,13 @@ public struct SeriesChartView: View {
             .frame(minHeight: 180)
             .accessibilityIdentifier("series-chart")
             .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(points.count) buckets")
+            .accessibilityChartDescriptor(SeriesChartDescriptor(
+                title: MetricID.descriptor(for: metric).displayName,
+                labels: points.map { displayLabel($0.label) },
+                values: points.compactMap { point in
+                    point.value.map { (displayLabel(point.label), $0) }
+                }
+            ))
             .animation(.snappy, value: series)
             .sensoryFeedback(.selection, trigger: selection)
             if let detail = selectionDetail {
@@ -303,6 +310,10 @@ public struct SeriesChartView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                     .accessibilityIdentifier("series-selection")
             }
+#if os(macOS)
+            // Legacy macOS surface keeps the explicit bucket table as its
+            // accessible equivalent (its UI suite asserts exact rows);
+            // iOS exposes the same values through the chart descriptor.
             VStack(alignment: .leading, spacing: 2) {
                 Text("Data table")
                     .font(.caption)
@@ -318,6 +329,42 @@ public struct SeriesChartView: View {
                     .accessibilityLabel("\(displayLabel(point.label)), \(cellText(point))")
                 }
             }
+#endif
+        }
+    }
+
+    /// VoiceOver chart content: every bucket as an explorable data point,
+    /// replacing the visible hour-by-hour table on iOS.
+    struct SeriesChartDescriptor: AXChartDescriptorRepresentable {
+        let title: String
+        let labels: [String]
+        let values: [(x: String, y: Double)]
+
+        func makeChartDescriptor() -> AXChartDescriptor {
+            let range = (values.map(\.y).min() ?? 0) ... (values.map(\.y).max() ?? 1)
+            return AXChartDescriptor(
+                title: title,
+                summary: "\(labels.count) buckets",
+                xAxis: AXCategoricalDataAxisDescriptor(title: "Time", categoryOrder: labels),
+                yAxis: AXNumericDataAxisDescriptor(
+                    title: title,
+                    range: range,
+                    gridlinePositions: [],
+                    valueDescriptionProvider: { value in
+                        let formatted = NumberFormatter()
+                        formatted.numberStyle = .decimal
+                        formatted.maximumFractionDigits = 2
+                        return formatted.string(from: NSNumber(value: value)) ?? "\(value)"
+                    }
+                ),
+                series: [
+                    AXDataSeriesDescriptor(
+                        name: title,
+                        isContinuous: false,
+                        dataPoints: values.map { AXDataPoint(x: $0.x, y: $0.y) }
+                    ),
+                ]
+            )
         }
     }
 

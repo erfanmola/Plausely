@@ -121,9 +121,11 @@ public final class SiteSelectionModel {
     public private(set) var query: DashboardQuery?
 
     private let directory: SiteDirectory
+    private let pinned: PinnedSites
 
-    public init(directory: SiteDirectory) {
+    public init(directory: SiteDirectory, pinned: PinnedSites = PinnedSites()) {
         self.directory = directory
+        self.pinned = pinned
     }
 
     public var selectedAccount: AccountRef? {
@@ -144,6 +146,34 @@ public final class SiteSelectionModel {
             grouped[site.section, default: []].append(site)
         }
         return order.map { (name: $0, sites: grouped[$0] ?? []) }
+    }
+
+    /// Pinned sites for the selected account, in pin order.
+    public var pinnedSites: [SiteRef] {
+        let byDomain = Dictionary(uniqueKeysWithValues: sites.map { ($0.domain, $0) })
+        return pinnedOrder.compactMap { byDomain[$0] }
+    }
+
+    /// Pin order mirror (observable; the store itself doesn't publish).
+    public private(set) var pinnedOrder: [String] = []
+
+    public func isPinned(_ domain: String) -> Bool {
+        pinnedOrder.contains(domain)
+    }
+
+    public func setPinned(_ domain: String, pinned: Bool) {
+        guard let account = selectedAccount else { return }
+        self.pinned.setPinned(pinned, domain: domain, account: account.id)
+        refreshPinnedOrder()
+    }
+
+    private func refreshPinnedOrder() {
+        guard let account = selectedAccount else {
+            pinnedOrder = []
+            return
+        }
+        let known = Set(sites.map(\.domain))
+        pinnedOrder = pinned.pinnedDomains(account: account.id).filter { known.contains($0) }
     }
 
     public func loadAccounts() async {
@@ -196,6 +226,7 @@ public final class SiteSelectionModel {
             sitesError = error as? ReportLoadError ?? ReportLoadError.wrap(error)
         }
         sitesLoading = false
+        refreshPinnedOrder()
     }
 
     private func clearSiteSelection() {

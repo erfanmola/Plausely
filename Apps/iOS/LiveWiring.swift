@@ -529,6 +529,21 @@ struct LiveRootView: View {
                     },
                     resolvePolicy: { [hub] query in
                         await hub.intervals(account: query.accountID, domain: query.siteID.domain)
+                    },
+                    sparkline: { [hub] site, account in
+                        let preview = DashboardQuery(
+                            accountID: account,
+                            siteID: SiteID(domain: site.domain, teamID: site.teamID),
+                            period: .days28,
+                            comparison: .off,
+                            filters: .empty,
+                            includeImported: false,
+                            interval: .day,
+                            selectedMetric: .visitors,
+                            timeZone: TimeZone(identifier: "UTC")!
+                        )
+                        let fixed = await corrected(preview, hub: hub)
+                        return try? await hub.series(fixed, today: Date()).value
                     }
                 )
             }

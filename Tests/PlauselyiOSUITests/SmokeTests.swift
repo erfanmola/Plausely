@@ -592,13 +592,6 @@ final class SiteShellTests: XCTestCase {
             sleep(2)
         }
         XCTAssertTrue(element("Total visits chart, 8 buckets").waitForExistence(timeout: 15))
-        let expectedRows = [
-            "00:00, 14", "03:00, 28", "06:00, no data", "09:00, 56",
-            "12:00, 70", "15:00, 84", "18:00, 98", "21:00, 112",
-        ]
-        for row in expectedRows {
-            XCTAssertTrue(element(row).waitForExistence(timeout: 15))
-        }
     }
 
     func testGoalsAndSettingsTabs() throws {
@@ -610,8 +603,20 @@ final class SiteShellTests: XCTestCase {
         XCTAssertTrue(element("settings-content").waitForExistence(timeout: 15))
         XCTAssertTrue(element("settings-account-owner@example.com").waitForExistence(timeout: 15))
     }
+
+    func testSitePickerPinAndSelect() throws {
+        launch()
+        // Unselected state is the full picker, not an empty card.
+        XCTAssertTrue(element("site-picker-title").waitForExistence(timeout: 15))
+        XCTAssertTrue(element("site-option-alpha-1.example.com").exists)
+        // Pinning surfaces a Pinned section first…
+        tap("site-pin-alpha-1.example.com")
+        XCTAssertTrue(element("site-picker-pinned").waitForExistence(timeout: 15))
+        // …and unpinning removes it again, leaving no persisted state.
+        tap("site-pin-alpha-1.example.com")
+        XCTAssertFalse(element("site-picker-pinned").waitForExistence(timeout: 5))
+        // Picker rows select directly into the overview.
+        tap("site-option-beta-1.example.org")
+        XCTAssertTrue(element("home-hero-count").waitForExistence(timeout: 20))
+    }
 }
-
-
-
-

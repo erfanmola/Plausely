@@ -46,6 +46,9 @@ public struct HomeRootView: View {
     /// re-derives the chart interval from it on every period change, so
     /// a stale bootstrap interval never reaches the wire.
     private let resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)?
+    /// Per-site visitors preview for the picker list. Failures degrade to
+    /// the plain row; never fake data.
+    private let sparkline: ((SiteRef, AccountID) async -> TimeSeries?)?
     @State private var generation: UInt64 = 0
 
     public init(
@@ -60,7 +63,8 @@ public struct HomeRootView: View {
         onExport: ExportButton.Exporter? = nil,
         resolveBase: (@MainActor (DashboardQuery) async -> DashboardQuery)? = nil,
         applyLock: (@MainActor (QueryModel) async -> Void)? = nil,
-        resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)? = nil
+        resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)? = nil,
+        sparkline: ((SiteRef, AccountID) async -> TimeSeries?)? = nil
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -75,13 +79,15 @@ public struct HomeRootView: View {
         self.resolveBase = resolveBase
         self.applyLock = applyLock
         self.resolvePolicy = resolvePolicy
+        self.sparkline = sparkline
     }
 
     public var body: some View {
         TabView(selection: $selectedTab) {
             HomeOverviewTab(
                 selection: selection, queryModel: queryModel,
-                overviewModel: overviewModel, realtimeModel: realtimeModel
+                overviewModel: overviewModel, realtimeModel: realtimeModel,
+                sparkline: sparkline
             )
             .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis") }
             .tag(Tab.overview)

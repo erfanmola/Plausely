@@ -25,7 +25,8 @@ public struct HomeHeroView: View {
                         .animation(.snappy, value: count)
                         .accessibilityIdentifier("home-hero-count")
                 } else {
-                    ProgressView()
+                    SkeletonBlocks(rows: 1, rowHeight: 64)
+                        .frame(width: 160)
                         .accessibilityIdentifier("home-hero-loading")
                 }
             }
@@ -77,11 +78,11 @@ struct LivePulseDot: View {
 /// (proven AX pattern); value/change/comparison ids match the legacy
 /// overview so behavior tests keep passing.
 public struct HomeMetricCards: View {
-    private let overview: Overview
+    private let stats: [TopStat]
     private let formatter = MetricFormatter()
 
-    public init(overview: Overview) {
-        self.overview = overview
+    public init(overview: Overview, trend: Overview? = nil) {
+        self.stats = TrendDeltas.apply(to: overview.stats, from: trend)
     }
 
     public var body: some View {
@@ -99,13 +100,13 @@ public struct HomeMetricCards: View {
 
     private var cardPairs: [(first: TopStat, second: TopStat?)] {
         var pairs: [(TopStat, TopStat?)] = []
-        var index = overview.stats.startIndex
-        while index < overview.stats.endIndex {
-            let first = overview.stats[index]
-            let next = overview.stats.index(after: index)
-            let second = next < overview.stats.endIndex ? overview.stats[next] : nil
+        var index = stats.startIndex
+        while index < stats.endIndex {
+            let first = stats[index]
+            let next = stats.index(after: index)
+            let second = next < stats.endIndex ? stats[next] : nil
             pairs.append((first, second))
-            index = overview.stats.index(index, offsetBy: 2, limitedBy: overview.stats.endIndex) ?? overview.stats.endIndex
+            index = stats.index(index, offsetBy: 2, limitedBy: stats.endIndex) ?? stats.endIndex
         }
         return pairs
     }

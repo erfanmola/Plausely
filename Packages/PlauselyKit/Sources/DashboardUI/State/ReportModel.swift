@@ -175,6 +175,10 @@ public final class ReportModel<Value: Sendable> {
 public final class DashboardModel {
     public let overview: ReportModel<Overview>
     public let series: ReportModel<TimeSeries>
+    /// Best-effort previous-period overview behind headline deltas. Loads
+    /// only when the main query carries no comparison of its own; shares
+    /// the overview cache (trend QueryIDs differ by comparison).
+    public let trend: ReportModel<Overview>
     private let overviewCache: ReportCache<Overview>?
     private let seriesCache: ReportCache<TimeSeries>?
 
@@ -199,6 +203,12 @@ public final class DashboardModel {
             cache: seriesCache,
             clock: clock
         )
+        trend = ReportModel(
+            loader: overviewLoader,
+            isEmpty: { $0.stats.isEmpty },
+            cache: overviewCache,
+            clock: clock
+        )
     }
 
     /// Loads both reports for the query. Failures are contained per report.
@@ -219,6 +229,7 @@ public final class DashboardModel {
     public func cancel() {
         overview.cancel()
         series.cancel()
+        trend.cancel()
     }
 
     public func clearCache(for account: AccountID) async {

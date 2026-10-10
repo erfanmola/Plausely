@@ -32,7 +32,21 @@ struct PlauselyApp: App {
                     segmentList: MockQueryProviders.segments,
                     realtimeLoader: MockRealtimeProviders.count,
                     onExport: { _ in (filename: "mock-export.zip", data: MockExportProviders.payload) },
-                    resolvePolicy: { _ in MockQueryProviders.intervals }
+                    resolvePolicy: { _ in MockQueryProviders.intervals },
+                    sparkline: { site, account in
+                        let query = DashboardQuery(
+                            accountID: account,
+                            siteID: SiteID(domain: site.domain, teamID: site.teamID),
+                            period: .days28,
+                            comparison: .off,
+                            filters: .empty,
+                            includeImported: false,
+                            interval: .day,
+                            selectedMetric: .visitors,
+                            timeZone: TimeZone(identifier: "UTC")!
+                        )
+                        return try? await MockOverviewProviders.series(query, Date()).value
+                    }
                 )
             } else {
                 LiveRootView()

@@ -7,6 +7,7 @@ struct HomeOverviewTab: View {
     var queryModel: QueryModel?
     var overviewModel: OverviewModel?
     var realtimeModel: RealtimeModel
+    var sparkline: ((SiteRef, AccountID) async -> TimeSeries?)?
 
     var body: some View {
         ScrollView {
@@ -22,7 +23,7 @@ struct HomeOverviewTab: View {
                         ReportStateView(
                             state: overviewModel.dashboard.overview.state,
                             onRetry: { Task { await overviewModel.refresh() } },
-                            content: { HomeMetricCards(overview: $0.value) }
+                            content: { HomeMetricCards(overview: $0.value, trend: overviewModel.dashboard.trend.state.displayable?.value) }
                         )
                         MetricPickerView(model: overviewModel)
                         HomeCard {
@@ -46,7 +47,7 @@ struct HomeOverviewTab: View {
                     Spacer(minLength: 90)
                 } else {
                     // No site yet: the full picker beats an empty card.
-                    SitePickerView(selection: selection)
+                    SitePickerView(selection: selection, sparkline: sparkline)
                 }
             }
             .padding(.horizontal, 16)

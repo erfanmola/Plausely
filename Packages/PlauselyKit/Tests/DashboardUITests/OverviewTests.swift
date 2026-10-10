@@ -166,3 +166,82 @@ struct OverviewTests {
         #expect(values.contains(.count(88)))
     }
 }
+
+@Suite("headline trend deltas")
+@MainActor
+struct TrendDeltasTests {
+    private var plain: [TopStat] {
+        [TopStat(metric: .visitors, name: "Unique visitors", value: .count(1600))]
+    }
+
+    private var delta: [TopStat] {
+        [TopStat(metric: .visitors, name: "Unique visitors", value: .count(1500), comparisonValue: .count(1400), change: 7)]
+    }
+
+    @Test("nil trend leaves stats untouched")
+    func nilTrend() {
+        #expect(TrendDeltas.apply(to: plain, from: nil) == plain)
+    }
+
+    @Test("trend fills missing change and comparison only")
+    func fillsMissing() {
+        let merged = TrendDeltas.apply(to: plain, from: Overview(stats: delta))
+        #expect(merged.count == 1)
+        #expect(merged[0].value == .count(1600))
+        #expect(merged[0].comparisonValue == .count(1400))
+        #expect(merged[0].change == 7)
+    }
+
+    @Test("main values and deltas win over trend")
+    func mainWins() {
+        let main = [TopStat(metric: .visitors, name: "Unique visitors", value: .count(1600), comparisonValue: .count(1300), change: -5)]
+        let merged = TrendDeltas.apply(to: main, from: Overview(stats: delta))
+        #expect(merged[0].value == .count(1600))
+        #expect(merged[0].comparisonValue == .count(1300))
+        #expect(merged[0].change == -5)
+    }
+
+    @Test("reload fetches a previous-period trend only without comparison")
+    func trendOrchestration() async throws {
+        let recorder = Recorder()
+        let model = OverviewModel(
+            overviewLoader: await recorder.overviewLoader(),
+            seriesLoader: await recorder.seriesLoader()
+        )
+        try await model.reload(query: baseQuery(), today: frozenToday)
+        let trendQuery = try #require((await recorder.overviewQueries).first { $0.comparison == .previousPeriod })
+        #expect(trendQuery.period == .days28)
+        if case .loaded = model.dashboard.trend.state {} else {
+            Issue.record("trend should load")
+        }
+        let comparing = baseQuery()
+        let onQuery = DashboardQuery(
+            accountID: comparing.accountID, siteID: comparing.siteID, period: comparing.period,
+            comparison: .previousPeriod, filters: comparing.filters, includeImported: comparing.includeImported,
+            interval: comparing.interval, selectedMetric: comparing.selectedMetric, timeZone: comparing.timeZone
+        )
+        let before = await recorder.overviewQueries.count
+        try await model.reload(query: onQuery, today: frozenToday)
+        #expect(await recorder.overviewQueries.count == before + 1)
+    }
+
+    @Test("realtime skips the trend fetch")
+    func realtimeSkipsTrend() async throws {
+        let recorder = Recorder()
+        let model = OverviewModel(
+            overviewLoader: await recorder.overviewLoader(),
+            seriesLoader: await recorder.seriesLoader()
+        )
+        let base = baseQuery()
+        let realtime = DashboardQuery(
+            accountID: base.accountID, siteID: base.siteID, period: .realtime,
+            comparison: .off, filters: base.filters, includeImported: base.includeImported,
+            interval: base.interval, selectedMetric: base.selectedMetric, timeZone: base.timeZone
+        )
+        try await model.reload(query: realtime, today: frozenToday)
+        #expect(await recorder.overviewQueries.count == 1)
+        if case .idle = model.dashboard.trend.state {} else {
+            Issue.record("trend should stay idle for realtime")
+        }
+    }
+}

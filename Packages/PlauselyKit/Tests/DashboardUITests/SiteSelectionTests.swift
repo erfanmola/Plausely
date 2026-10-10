@@ -129,3 +129,46 @@ struct SiteSelectionTests {
 private extension FlakyStore {
     func setFail() { fail = true }
 }
+
+@Suite("site pinning")
+@MainActor
+struct SitePinningTests {
+    private func ephemeral() -> UserDefaults {
+        let suite = UserDefaults(suiteName: "plausely-pin-tests")!
+        suite.removePersistentDomain(forName: "plausely-pin-tests")
+        return suite
+    }
+
+    @Test("pins persist per account in pin order")
+    func pinRoundTrip() async {
+        let store = PinnedSites(defaults: ephemeral())
+        let directory = MockSiteDirectory.thirteenSites()
+        let model = SiteSelectionModel(directory: directory, pinned: store)
+        await model.loadAccounts()
+        #expect(model.pinnedSites.isEmpty)
+        model.setPinned("beta-2.example.org", pinned: true)
+        model.setPinned("alpha-1.example.com", pinned: true)
+        #expect(model.pinnedSites.map(\.domain) == ["beta-2.example.org", "alpha-1.example.com"])
+        #expect(model.isPinned("alpha-1.example.com"))
+        model.setPinned("beta-2.example.org", pinned: false)
+        #expect(model.pinnedSites.map(\.domain) == ["alpha-1.example.com"])
+        // A fresh model over the same directory and store sees the pins.
+        let revived = SiteSelectionModel(directory: directory, pinned: store)
+        await revived.loadAccounts()
+        #expect(revived.pinnedSites.map(\.domain) == ["alpha-1.example.com"])
+    }
+
+    @Test("pins are isolated across accounts and drop vanished sites")
+    func pinIsolation() async {
+        let store = PinnedSites(defaults: ephemeral())
+        let model = SiteSelectionModel(directory: MockSiteDirectory.thirteenSites(), pinned: store)
+        await model.loadAccounts()
+        model.setPinned("alpha-1.example.com", pinned: true)
+        await model.selectAccount(model.accounts[1].id)
+        #expect(model.pinnedSites.isEmpty)
+        model.setPinned("local.example", pinned: true)
+        #expect(model.pinnedSites.map(\.domain) == ["local.example"])
+        await model.selectAccount(model.accounts[0].id)
+        #expect(model.pinnedSites.map(\.domain) == ["alpha-1.example.com"])
+    }
+}

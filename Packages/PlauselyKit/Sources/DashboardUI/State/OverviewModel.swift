@@ -51,6 +51,26 @@ public enum SeriesPoints {
     }
 }
 
+/// Headline delta merge: server values always win; the best-effort
+/// previous-period fetch only fills change/comparison the main query
+/// lacks. No client math anywhere — both sides are server aggregates.
+public enum TrendDeltas {
+    public static func apply(to stats: [TopStat], from trend: Overview?) -> [TopStat] {
+        guard let trend else { return stats }
+        let deltas = Dictionary(uniqueKeysWithValues: trend.stats.map { ($0.metric, $0) })
+        return stats.map { stat in
+            guard stat.change == nil, let fill = deltas[stat.metric] else { return stat }
+            return TopStat(
+                metric: stat.metric,
+                name: stat.name,
+                value: stat.value,
+                comparisonValue: stat.comparisonValue ?? fill.comparisonValue,
+                change: fill.change
+            )
+        }
+    }
+}
+
 /// Noncolor change text: direction is carried by arrow + sign + words, never
 /// color alone (MET-04).
 public func changeText(_ change: Int?) -> String? {
@@ -98,8 +118,10 @@ public final class OverviewModel {
         lastQuery = query
         async let first: () = dashboard.overview.load(query: query, today: today)
         async let second: () = dashboard.series.load(query: seriesQuery(from: query), today: today)
+        async let third: () = loadTrend(for: query, today: today)
         await first
         await second
+        await third
     }
 
     /// Applies a new chart metric to the last query and reloads the series
@@ -114,6 +136,30 @@ public final class OverviewModel {
 
     public func refresh(today: Date? = nil) async {
         await dashboard.refresh(today: today)
+        if let lastQuery { await loadTrend(for: lastQuery, today: today) }
+    }
+
+    /// Previous-period overview behind headline deltas. Runs only when the
+    /// main query has no comparison of its own and the period supports
+    /// one; failures stay silent so cards keep base values without deltas.
+    private func loadTrend(for query: DashboardQuery, today: Date? = nil) async {
+        guard query.comparison == .off,
+              Comparison.previousPeriod.isSupported(for: query.period)
+        else { return }
+        let trendQuery = DashboardQuery(
+            accountID: query.accountID,
+            siteID: query.siteID,
+            period: query.period,
+            periodDate: query.periodDate,
+            comparison: .previousPeriod,
+            matchDayOfWeek: query.matchDayOfWeek,
+            filters: query.filters,
+            includeImported: query.includeImported,
+            interval: query.interval,
+            selectedMetric: query.selectedMetric,
+            timeZone: query.timeZone
+        )
+        await dashboard.trend.load(query: trendQuery, today: today)
     }
 
     private func seriesQuery(from query: DashboardQuery) -> DashboardQuery {
