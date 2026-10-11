@@ -52,7 +52,10 @@ public struct HomeRootView: View {
     private let sparkline: ((SiteRef, AccountID) async -> TimeSeries?)?
     /// Per-site query controls plus last active site, persisted locally.
     private let preferences: SitePreferences
+    private let widgetDestination: WidgetSiteDestination?
+    private let onWidgetDestinationHandled: () -> Void
     @State private var generation: UInt64 = 0
+    @State private var handledWidgetDestination: WidgetSiteDestination?
 
     public init(
         directory: any SiteDirectory,
@@ -68,7 +71,9 @@ public struct HomeRootView: View {
         applyLock: (@MainActor (QueryModel) async -> Void)? = nil,
         resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)? = nil,
         sparkline: ((SiteRef, AccountID) async -> TimeSeries?)? = nil,
-        preferences: SitePreferences = SitePreferences()
+        preferences: SitePreferences = SitePreferences(),
+        widgetDestination: WidgetSiteDestination? = nil,
+        onWidgetDestinationHandled: @escaping () -> Void = {}
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -85,6 +90,8 @@ public struct HomeRootView: View {
         self.resolvePolicy = resolvePolicy
         self.sparkline = sparkline
         self.preferences = preferences
+        self.widgetDestination = widgetDestination
+        self.onWidgetDestinationHandled = onWidgetDestinationHandled
     }
 
     public var body: some View {
@@ -141,7 +148,26 @@ public struct HomeRootView: View {
         }
         .task {
             await selection.loadAccounts()
+            await applyWidgetDestination()
         }
+        .onChange(of: widgetDestination) { _, destination in
+            guard destination != nil else {
+                handledWidgetDestination = nil
+                return
+            }
+            Task { await applyWidgetDestination() }
+        }
+    }
+
+    @MainActor
+    private func applyWidgetDestination() async {
+        guard let destination = widgetDestination,
+              handledWidgetDestination != destination,
+              await selection.openSite(accountID: destination.accountID, domain: destination.domain)
+        else { return }
+        handledWidgetDestination = destination
+        selectedTab = .overview
+        onWidgetDestinationHandled()
     }
 
     // MARK: - Wiring (mirrors the legacy roots; only loaders differ)

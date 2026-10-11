@@ -20,6 +20,17 @@
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>ir.developex.Plausely</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>plausely</string>
+			</array>
+		</dict>
+	</array>
 	<key>PlauselyKeychainAccessGroup</key>
 	<string>$(AppIdentifierPrefix)ir.developex.Plausely</string>
 	<key>LSRequiresIPhoneOS</key>

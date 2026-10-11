@@ -168,6 +168,7 @@ struct PlauselyWidgetEntry: TimelineEntry {
     let domain: String
     let period: String
     let refreshCadence: WidgetRefreshCadence
+    let destinationURL: URL?
     let metrics: [(name: String, value: String)]
     let chartValues: [Double?]
     let chartCurrentMinute: Double?
@@ -175,6 +176,7 @@ struct PlauselyWidgetEntry: TimelineEntry {
 
     static func placeholder(at date: Date = .now) -> Self {
         Self(date: date, domain: "your-site.com", period: "Last 28 days", refreshCadence: .thirtyMinutes,
+             destinationURL: nil,
              metrics: [("Visitors", "12,480"), ("Visits", "15,204"), ("Pageviews", "28,710")],
              chartValues: [2, 3, 2, 5, 4, 7, 6, 8, 7, 9], chartCurrentMinute: nil, error: nil)
     }
@@ -236,6 +238,7 @@ private enum WidgetReportLoader {
                 return PlauselyWidgetEntry(
                     date: now, domain: site.domain, period: "Realtime",
                     refreshCadence: configuration.refreshCadence,
+                    destinationURL: WidgetSiteDestination(accountID: AccountID(rawValue: uuid), domain: site.domain).url,
                     metrics: [("Current visitors", NumberFormatter.localizedString(from: NSNumber(value: current.count), number: .decimal))],
                     chartValues: [],
                     chartCurrentMinute: nil,
@@ -278,6 +281,7 @@ private enum WidgetReportLoader {
                 domain: site.domain,
                 period: Self.periodTitle(configuration.period),
                 refreshCadence: configuration.refreshCadence,
+                destinationURL: WidgetSiteDestination(accountID: AccountID(rawValue: uuid), domain: site.domain).url,
                 metrics: metrics,
                 chartValues: chartValues,
                 chartCurrentMinute: chartCurrentMinute,
@@ -294,6 +298,10 @@ private enum WidgetReportLoader {
             domain: configuration.website?.domain ?? "Plausely",
             period: Self.periodTitle(configuration.period),
             refreshCadence: configuration.refreshCadence,
+            destinationURL: configuration.website.flatMap { site in
+                guard let uuid = UUID(uuidString: site.accountID) else { return nil }
+                return WidgetSiteDestination(accountID: AccountID(rawValue: uuid), domain: site.domain).url
+            },
             metrics: [],
             chartValues: [],
             chartCurrentMinute: nil,
@@ -518,6 +526,7 @@ struct PlauselyAnalyticsWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: PlauselyWidgetConfiguration.self, provider: PlauselyWidgetProvider()) { entry in
             PlauselyWidgetView(entry: entry)
+                .widgetURL(entry.destinationURL)
         }
         .configurationDisplayName("Plausely Analytics")
         .description("Keep analytics for a chosen website and period in view. Refreshes may be delayed by WidgetKit.")

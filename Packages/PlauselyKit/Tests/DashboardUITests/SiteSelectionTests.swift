@@ -72,6 +72,18 @@ struct SiteSelectionTests {
         #expect(model.sites.map(\.domain) == ["local.example"])
     }
 
+    @Test("widget destination selects the requested account and site")
+    func widgetDestination() async throws {
+        let model = SiteSelectionModel(directory: MockSiteDirectory.thirteenSites())
+        await model.loadAccounts()
+        let targetAccount = try #require(model.accounts.last?.id)
+
+        #expect(await model.openSite(accountID: targetAccount, domain: "local.example"))
+        #expect(model.selectedAccountID == targetAccount)
+        #expect(model.selectedDomain == "local.example")
+        #expect(model.query?.siteID.domain == "local.example")
+    }
+
     @Test("selecting a site that vanished clears the query")
     func vanishedSite() async {
         let store = FlakyStore()

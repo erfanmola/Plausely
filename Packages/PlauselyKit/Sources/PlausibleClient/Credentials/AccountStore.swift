@@ -141,7 +141,10 @@ public struct AccountStore: Sendable {
                         }
                     }
                 }
-                return AccountStore(directory: sharedDirectory, sharedKeychainAccessGroup: nil)
+                return AccountStore(
+                    directory: sharedDirectory,
+                    sharedKeychainAccessGroup: SharedKeychainDataStore.accessGroup
+                )
             } catch {
                 if let localDirectory {
                     return AccountStore(directory: localDirectory, sharedKeychainAccessGroup: SharedKeychainDataStore.accessGroup)

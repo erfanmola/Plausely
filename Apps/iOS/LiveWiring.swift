@@ -3,6 +3,7 @@ import DashboardUI
 import Foundation
 import PlausibleClient
 import SwiftUI
+import WidgetKit
 
 /// v1 live wiring (04.2 follow-on). App targets link PlausibleClient and
 /// compose the productized session/discovery/adapter graph here; DashboardUI
@@ -498,6 +499,7 @@ struct LiveRootView: View {
     @State private var selection: SiteSelectionModel
     @State private var accounts: [AccountRef] = []
     @State private var accountsLoaded = false
+    @State private var widgetDestination: WidgetSiteDestination?
     @State private var signOutError: String?
     @State private var showingSignOutError = false
 
@@ -567,11 +569,14 @@ struct LiveRootView: View {
                         )
                         let fixed = await corrected(preview, hub: hub)
                         return try? await hub.series(fixed, today: Date()).value
-                    }
+                    },
+                    widgetDestination: widgetDestination,
+                    onWidgetDestinationHandled: { widgetDestination = nil }
                 )
             }
         }
         .task { await refreshAccounts() }
+        .onOpenURL { url in widgetDestination = WidgetSiteDestination(url: url) }
         .alert("Couldn't sign out", isPresented: $showingSignOutError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -588,6 +593,7 @@ struct LiveRootView: View {
         accounts = await hub.accountRefs()
         accountsLoaded = true
         await selection.loadAccounts()
+        WidgetCenter.shared.reloadTimelines(ofKind: "PlauselyAnalyticsWidget")
     }
 
     private func signOut(_ account: AccountRef) async {
