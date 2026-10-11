@@ -384,16 +384,15 @@ struct PlauselyWidgetView: View {
     let entry: PlauselyWidgetEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 5) {
             if family == .systemSmall {
-                HStack {
+                HStack(spacing: 4) {
                     Text(entry.domain).font(.caption.weight(.semibold)).lineLimit(1)
                     Spacer(minLength: 0)
+                    Text(entry.period).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                 }
             } else {
-                HStack(spacing: 6) {
-                    Image(systemName: "chart.xyaxis.line")
-                        .foregroundStyle(.tint)
+                HStack(spacing: 5) {
                     Text(entry.domain).font(.caption.weight(.semibold)).lineLimit(1)
                     Spacer(minLength: 0)
                     Text(entry.period).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
@@ -401,16 +400,13 @@ struct PlauselyWidgetView: View {
                 }
             }
             if let error = entry.error {
-                Spacer(minLength: 0)
                 Text(error).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                Spacer(minLength: 0)
             } else if family == .systemSmall {
                 smallContent
             } else {
                 expandedContent
             }
             if family != .systemSmall {
-                Spacer(minLength: 0)
                 HStack {
                     Text("Updated \(entry.date, style: .time)")
                     Spacer()
@@ -419,26 +415,28 @@ struct PlauselyWidgetView: View {
                 .foregroundStyle(.secondary)
             }
         }
-        .padding()
+        .padding(.horizontal, family == .systemSmall ? 9 : 11)
+        .padding(.vertical, family == .systemSmall ? 7 : 9)
         .containerBackground(for: .widget) { Color.clear }
     }
 
     private var smallContent: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(entry.metrics.first?.value ?? "—")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: 31, weight: .bold, design: .rounded))
                 .minimumScaleFactor(0.65)
                 .lineLimit(1)
-            HStack {
+            HStack(spacing: 4) {
                 Text(entry.metrics.first?.name ?? "Visitors")
                 Spacer(minLength: 0)
-                Text(entry.period)
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
-            WidgetSparkline(values: entry.chartValues, height: 32, chartCurrentMinute: entry.chartCurrentMinute)
+            if !entry.chartValues.isEmpty {
+                WidgetSparkline(values: entry.chartValues, height: 42, chartCurrentMinute: entry.chartCurrentMinute)
+            }
         }
-        .frame(maxHeight: .infinity, alignment: .center)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var refreshButton: some View {
@@ -450,23 +448,27 @@ struct PlauselyWidgetView: View {
     }
 
     private var expandedContent: some View {
-        let count = family == .systemMedium ? 3 : (family == .systemLarge ? 6 : 8)
-        return VStack(spacing: 5) {
+        let count = family == .systemMedium ? 4 : (family == .systemLarge ? 6 : 8)
+        let chartHeight: CGFloat = switch family {
+        case .systemMedium: 42
+        case .systemLarge: 108
+        default: 128
+        }
+        return VStack(spacing: 3) {
             WidgetSparkline(
                 values: entry.chartValues,
-                height: family == .systemMedium ? 54 : 88,
+                height: chartHeight,
                 chartCurrentMinute: entry.chartCurrentMinute
             )
 
-            LazyVStack(spacing: 5) {
+            LazyVStack(spacing: 2) {
                 ForEach(Array(entry.metrics.prefix(count).enumerated()), id: \.offset) { item in
                 let metric = item.element
                 HStack {
-                    Text(metric.name).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(metric.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
                     Spacer()
-                    Text(metric.value).font(.system(.body, design: .rounded, weight: .semibold)).monospacedDigit()
+                    Text(metric.value).font(.system(.caption, design: .rounded, weight: .semibold)).monospacedDigit()
                 }
-                if metric.name != entry.metrics.prefix(count).last?.name { Divider() }
                 }
             }
         }
@@ -530,6 +532,7 @@ struct PlauselyAnalyticsWidget: Widget {
         }
         .configurationDisplayName("Plausely Analytics")
         .description("Keep analytics for a chosen website and period in view. Refreshes may be delayed by WidgetKit.")
+        .contentMarginsDisabled()
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
