@@ -28,15 +28,68 @@ struct WidgetSiteEntity: AppEntity, Hashable, Identifiable {
 struct WidgetSiteEntityQuery: EntityQuery {
     func entities(for identifiers: [String]) async throws -> [WidgetSiteEntity] {
         let wanted = Set(identifiers)
-        return WidgetSiteCatalog.all().filter { wanted.contains($0.id) }.map(WidgetSiteEntity.init)
+        return await availableSites().filter { wanted.contains($0.id) }.map(WidgetSiteEntity.init)
     }
 
     func suggestedEntities() async throws -> [WidgetSiteEntity] {
-        WidgetSiteCatalog.all().map(WidgetSiteEntity.init)
+        await availableSites().map(WidgetSiteEntity.init)
     }
 
     func defaultResult() async -> WidgetSiteEntity? {
-        WidgetSiteCatalog.all().first.map(WidgetSiteEntity.init)
+        await availableSites().first.map(WidgetSiteEntity.init)
+    }
+
+    private func availableSites() async -> [WidgetSiteOption] {
+        let cached = WidgetSiteCatalog.all()
+        guard cached.isEmpty else { return cached }
+        guard let store = try? AccountStore.production(),
+              let accountIDs = try? store.allIDs() else { return [] }
+
+        let credentials = KeychainCredentialStore(
+            accessGroup: Bundle.main.infoDictionary?["PlauselyKeychainAccessGroup"] as? String
+        )
+        let transport = URLSessionTransport()
+        var discoveredOptions: [WidgetSiteOption] = []
+
+        for accountID in accountIDs {
+            guard let record = try? store.load(id: accountID) else { continue }
+            let options: [WidgetSiteOption]
+            if let sharedLink = record.sharedLink {
+                options = [WidgetSiteOption(
+                    accountID: accountID,
+                    domain: sharedLink.domain,
+                    teamID: nil,
+                    timeZoneID: nil
+                )]
+            } else {
+                let coordinator = SessionCoordinator(
+                    bridge: WebAuthenticationBridge(baseURL: record.baseURL),
+                    credentials: credentials,
+                    accounts: store,
+                    transport: transport
+                )
+                guard let sites = try? await CE321SiteDiscovery(
+                    coordinator: coordinator, transport: transport
+                ).discover(account: accountID) else { continue }
+                options = sites.map { site in
+                    WidgetSiteOption(
+                        accountID: accountID,
+                        domain: site.domain,
+                        teamID: site.teamIdentifier,
+                        timeZoneID: nil
+                    )
+                }
+            }
+
+            if !options.isEmpty {
+                WidgetSiteCatalog.replace(accountID: accountID, with: options)
+                discoveredOptions.append(contentsOf: options)
+            }
+        }
+
+        return discoveredOptions.sorted {
+            $0.domain.localizedCaseInsensitiveCompare($1.domain) == .orderedAscending
+        }
     }
 }
 
