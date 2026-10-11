@@ -384,59 +384,63 @@ struct PlauselyWidgetView: View {
     let entry: PlauselyWidgetEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            if family == .systemSmall {
-                HStack(spacing: 4) {
-                    Text(entry.domain).font(.caption.weight(.semibold)).lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(entry.period).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                }
-            } else {
-                HStack(spacing: 5) {
-                    Text(entry.domain).font(.caption.weight(.semibold)).lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(entry.period).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+        VStack(alignment: .center, spacing: family == .systemSmall ? 7 : 6) {
+            HStack(spacing: 6) {
+                Text(entry.domain)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text("·")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(entry.period)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                if family != .systemSmall {
                     refreshButton
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
             if let error = entry.error {
-                Text(error).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .frame(maxWidth: .infinity)
             } else if family == .systemSmall {
                 smallContent
             } else {
                 expandedContent
             }
-            if family != .systemSmall {
-                HStack {
-                    Text("Updated \(entry.date, style: .time)")
-                    Spacer()
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            if family == .systemLarge || family == .systemExtraLarge {
+                Text("Updated \(entry.date, style: .time)")
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, family == .systemSmall ? 9 : 11)
-        .padding(.vertical, family == .systemSmall ? 7 : 9)
+        .padding(.horizontal, family == .systemSmall ? 12 : 14)
+        .padding(.vertical, family == .systemSmall ? 10 : 11)
         .containerBackground(for: .widget) { Color.clear }
     }
 
     private var smallContent: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .center, spacing: 4) {
             Text(entry.metrics.first?.value ?? "—")
                 .font(.system(size: 31, weight: .bold, design: .rounded))
                 .minimumScaleFactor(0.65)
                 .lineLimit(1)
-            HStack(spacing: 4) {
-                Text(entry.metrics.first?.name ?? "Visitors")
-                Spacer(minLength: 0)
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+            Text(entry.metrics.first?.name ?? "Visitors")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
             if !entry.chartValues.isEmpty {
-                WidgetSparkline(values: entry.chartValues, height: 42, chartCurrentMinute: entry.chartCurrentMinute)
+                WidgetSparkline(values: entry.chartValues, height: 40, chartCurrentMinute: entry.chartCurrentMinute)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .center)
     }
 
     private var refreshButton: some View {
@@ -450,25 +454,31 @@ struct PlauselyWidgetView: View {
     private var expandedContent: some View {
         let count = family == .systemMedium ? 4 : (family == .systemLarge ? 6 : 8)
         let chartHeight: CGFloat = switch family {
-        case .systemMedium: 42
-        case .systemLarge: 108
-        default: 128
+        case .systemMedium: 34
+        case .systemLarge: 110
+        default: 126
         }
-        return VStack(spacing: 3) {
+        return VStack(alignment: .center, spacing: 5) {
             WidgetSparkline(
                 values: entry.chartValues,
                 height: chartHeight,
                 chartCurrentMinute: entry.chartCurrentMinute
             )
 
-            LazyVStack(spacing: 2) {
+            LazyVStack(alignment: .center, spacing: 4) {
                 ForEach(Array(entry.metrics.prefix(count).enumerated()), id: \.offset) { item in
-                let metric = item.element
-                HStack {
-                    Text(metric.name).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    Spacer()
-                    Text(metric.value).font(.system(.caption, design: .rounded, weight: .semibold)).monospacedDigit()
-                }
+                    let metric = item.element
+                    HStack(spacing: 8) {
+                        Text(metric.name)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Text(metric.value)
+                            .font(.system(.caption, design: .rounded, weight: .semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
         }
