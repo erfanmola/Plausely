@@ -39,7 +39,9 @@ enum LiveError: LocalizedError {
 /// login in one window is visible to windows opened afterwards.
 actor LiveHub {
     private let transport = URLSessionTransport()
-    private let credentials = KeychainCredentialStore()
+    private let credentials = KeychainCredentialStore(
+        accessGroup: Bundle.main.infoDictionary?["PlauselyKeychainAccessGroup"] as? String
+    )
     private let store: AccountStore?
     private var contexts: [AccountID: LiveContext] = [:]
     /// Shared-link adapters (slug auth, no session) by account.
@@ -161,6 +163,7 @@ actor LiveHub {
         bootstraps = bootstraps.filter { !$0.key.hasPrefix(id.rawValue.uuidString + "/") }
         sharedAdapters[id] = nil
         limitedSegments[id] = nil
+        WidgetSiteCatalog.remove(accountID: id)
     }
 
     // MARK: Sites
@@ -180,7 +183,11 @@ actor LiveHub {
     func sites(for account: AccountRef) async throws -> [SiteRef] {
         // Shared links expose exactly their linked site (verified at login).
         if let store, let record = try? store.load(id: account.id), let link = record.sharedLink {
-            return [SiteRef(domain: link.domain, role: "shared")]
+            let site = SiteRef(domain: link.domain, role: "shared")
+            WidgetSiteCatalog.replace(accountID: account.id, with: [
+                WidgetSiteOption(accountID: account.id, domain: site.domain, teamID: nil, timeZoneID: nil)
+            ])
+            return [site]
         }
         let context = try contextFor(account: account)
         let domains = try await context.discovery.discover(account: account.id)
@@ -206,11 +213,27 @@ actor LiveHub {
                 refs.append(ref)
             }
         }
-        return refs.sorted { $0.domain < $1.domain }
+        let sorted = refs.sorted { $0.domain < $1.domain }
+        WidgetSiteCatalog.replace(accountID: account.id, with: sorted.map { site in
+            WidgetSiteOption(
+                accountID: account.id,
+                domain: site.domain,
+                teamID: site.teamID,
+                timeZoneID: bootstraps[account.id.rawValue.uuidString + "/" + site.domain]?.timeZone?.identifier
+            )
+        })
+        return sorted
     }
 
     func timeZone(account: AccountID, domain: String) async -> TimeZone? {
-        bootstraps[account.rawValue.uuidString + "/" + domain]?.timeZone
+        let key = account.rawValue.uuidString + "/" + domain
+        if let cached = bootstraps[key] { return cached.timeZone }
+        // Site discovery bootstraps sites concurrently. A selection can be
+        // restored while that first pass is still in flight, so resolve the
+        // timezone on demand instead of letting Today query in GMT.
+        guard let store, let record = try? store.load(id: account) else { return nil }
+        let ref = AccountRef(id: record.id, baseURL: record.baseURL, email: record.email)
+        return try? await bootstrap(account: ref, domain: domain).timeZone
     }
 
     /// Bootstrap interval map for one site (nil until discovered).

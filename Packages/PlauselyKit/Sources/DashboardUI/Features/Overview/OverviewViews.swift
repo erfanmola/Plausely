@@ -96,7 +96,7 @@ public struct OverviewContentView: View {
             ReportStateView(state: model.dashboard.series.state, onRetry: {
                 Task { await model.refresh() }
             }, content: {
-                SeriesChartView(series: $0.value, metric: model.selectedMetric, period: query.period, timeZone: query.timeZone)
+                SeriesChartView(series: $0.value, metric: model.selectedMetric, period: query.period, periodDate: query.periodDate, timeZone: query.timeZone)
             })
         }
         .task(id: query) {
@@ -204,6 +204,7 @@ public struct MetricPickerView: View {
             .glassCapsule()
         }
         .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .accessibilityIdentifier("metric-picker")
         .sensoryFeedback(.selection, trigger: model.selectedMetric)
     }
@@ -213,33 +214,156 @@ public struct MetricPickerView: View {
 /// Every bucket plots (no downsampling); nil buckets render as gaps, never
 /// zeros. Selection shows the bucket's exact server value.
 public struct SeriesChartView: View {
-    private let series: TimeSeries
     private let metric: MetricID
     private let period: Period
+    private let periodDate: Date?
     private let timeZone: TimeZone
-    @State private var selection: String?
+    @State private var selection: Double?
+    @State private var clock = Date()
     private let formatter = MetricFormatter()
+    private let points: [SeriesPoint]
+    private let xPositions: [Double]
 
-    public init(series: TimeSeries, metric: MetricID, period: Period, timeZone: TimeZone) {
-        self.series = series
+    public init(series: TimeSeries, metric: MetricID, period: Period, periodDate: Date? = nil, timeZone: TimeZone) {
         self.metric = metric
         self.period = period
+        self.periodDate = periodDate
         self.timeZone = timeZone
+        let points = SeriesPoints.build(from: series)
+        self.points = points
+        self.xPositions = points.map { Self.xPosition(for: $0, period: period) }
     }
 
-    private var points: [SeriesPoint] { SeriesPoints.build(from: series) }
+    private var isDayChart: Bool { period == .day }
+    private var isToday: Bool { isDayChart && periodDate == nil }
 
     private func displayLabel(_ raw: String) -> String {
         BucketLabels.display(raw, for: period, in: timeZone)
     }
 
+    /// Plausible's day graph uses site wall-clock timestamps. Map them onto
+    /// a fixed 1,440-minute day so the plot keeps its full width after 00:00.
+    private func xPosition(for point: SeriesPoint) -> Double {
+        guard xPositions.indices.contains(point.index) else { return Double(point.index) }
+        return xPositions[point.index]
+    }
+
+    private static func xPosition(for point: SeriesPoint, period: Period) -> Double {
+        guard period == .day else { return Double(point.index) }
+        let time = point.label.split(separator: " ").last ?? Substring(point.label)
+        let components = time.split(separator: ":")
+        guard components.count >= 2,
+              let hour = Int(components[0]), let minute = Int(components[1]),
+              (0..<24).contains(hour), (0..<60).contains(minute)
+        else { return Double(point.index) }
+        return Double(hour * 60 + minute)
+    }
+
+    private var xDomain: ClosedRange<Double> {
+        isDayChart ? 0...1439 : 0...Double(max(points.count - 1, 1))
+    }
+
+    private var currentMinute: Double {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.hour, .minute], from: clock)
+        return Double((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+    }
+
+    private var currentHour: Int { Int(currentMinute) / 60 }
+
+    private func axisMinute(_ value: AxisValue) -> Int? {
+        guard let minute = value.as(Double.self) else { return nil }
+        return Int(minute)
+    }
+
+    private var dayYMaximum: Double {
+        max(1, (visiblePoints.compactMap(\.value).max() ?? 0) * 1.1)
+    }
+
+    private var visiblePoints: [SeriesPoint] {
+        isToday ? points.filter { xPosition(for: $0) <= currentMinute } : points
+    }
+
+    /// Hourly buckets cover the whole hour. Keep the final 23:00 value
+    /// visible through the last minute on historical day charts.
+    private var finalHourlyBucket: SeriesPoint? {
+        guard isDayChart, !isToday, let last = points.last,
+              xPosition(for: last) == 23 * 60, last.value != nil
+        else { return nil }
+        return last
+    }
+
+    @ChartContentBuilder
+    private var finalHourlyChartContent: some ChartContent {
+        if let point = finalHourlyBucket, let value = point.value {
+            AreaMark(
+                xStart: .value("Last hour start", xPosition(for: point)),
+                xEnd: .value("End of day", 1439),
+                y: .value("Last hour visitors", value),
+                series: .value("Series", "Final hour")
+            )
+            .foregroundStyle(
+                LinearGradient(
+                    colors: [.blue.opacity(0.35), .blue.opacity(0.03)],
+                    startPoint: .top, endPoint: .bottom
+                )
+            )
+            ForEach([xPosition(for: point), 1439], id: \.self) { minute in
+                LineMark(
+                    x: .value("Bucket", minute),
+                    y: .value("Last hour visitors", value),
+                    series: .value("Series", "Final hour")
+                )
+                .interpolationMethod(.linear)
+                .foregroundStyle(.blue)
+            }
+        }
+    }
+
+    /// Snap touch selection to actual buckets. The chart then changes state
+    /// only when the finger crosses into another bucket, not on every pixel.
+    private var bucketSelection: Binding<Double?> {
+        Binding(
+            get: { selection },
+            set: { proposed in
+                guard let proposed else {
+                    if selection != nil { selection = nil }
+                    return
+                }
+                guard let nearest = visiblePoints.min(by: {
+                    abs(xPosition(for: $0) - proposed) < abs(xPosition(for: $1) - proposed)
+                }) else { return }
+                let snapped = xPosition(for: nearest)
+                if selection != snapped { selection = snapped }
+            }
+        )
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Chart {
+                if isToday {
+                    RectangleMark(
+                        xStart: .value("Current hour start", Double(currentHour * 60)),
+                        xEnd: .value("Current hour end", Double((currentHour + 1) * 60)),
+                        yStart: .value("Baseline", 0),
+                        yEnd: .value("Scale", dayYMaximum)
+                    )
+                    .foregroundStyle(.orange.opacity(0.08))
+                    RuleMark(x: .value("Current time", currentMinute))
+                        .foregroundStyle(.orange)
+                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                        .annotation(position: .top, alignment: .trailing) {
+                            Text("NOW")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.orange)
+                        }
+                }
                 ForEach(primaryRuns, id: \.firstIndex) { run in
                     ForEach(run.points, id: \.index) { point in
                         LineMark(
-                            x: .value("Bucket", point.label),
+                            x: .value("Bucket", xPosition(for: point)),
                             y: .value("Value", point.value!)
                         )
                         .interpolationMethod(.catmullRom)
@@ -247,7 +371,7 @@ public struct SeriesChartView: View {
                     .foregroundStyle(.blue)
                     ForEach(run.points, id: \.index) { point in
                         AreaMark(
-                            x: .value("Bucket", point.label),
+                            x: .value("Bucket", xPosition(for: point)),
                             y: .value("Value", point.value!)
                         )
                         .interpolationMethod(.catmullRom)
@@ -259,10 +383,11 @@ public struct SeriesChartView: View {
                         )
                     )
                 }
+                finalHourlyChartContent
                 ForEach(comparisonRuns, id: \.firstIndex) { run in
                     ForEach(run.points, id: \.index) { point in
                         LineMark(
-                            x: .value("Bucket", point.label),
+                            x: .value("Bucket", xPosition(for: point)),
                             y: .value("Comparison", point.comparison!)
                         )
                         .interpolationMethod(.catmullRom)
@@ -270,11 +395,10 @@ public struct SeriesChartView: View {
                     .foregroundStyle(.gray)
                     .lineStyle(StrokeStyle(dash: [4, 4]))
                 }
-                if let selection {
+                if let selection, let selectedPoint {
                     RuleMark(x: .value("Selected", selection))
                         .foregroundStyle(.secondary)
-                    if let point = points.first(where: { $0.label == selection }),
-                       let value = point.value {
+                    if let value = selectedPoint.value {
                         PointMark(x: .value("Selected", selection), y: .value("Value", value))
                             .foregroundStyle(.white)
                             .symbolSize(220)
@@ -284,19 +408,28 @@ public struct SeriesChartView: View {
                     }
                 }
             }
-            .chartXSelection(value: $selection)
-            .chartXScale(range: .plotDimension(startPadding: 0, endPadding: 0))
+            .chartXSelection(value: bucketSelection)
+            .chartXScale(domain: xDomain)
             .chartXAxis {
-                // Labels render only for strided positions: explicit value
-                // lists are not honored for string categories, so the
-                // content gate (not the values list) is what caps labels.
-                // Gridlines follow the same gate, so sparse buckets never
-                // drown in lines either.
-                AxisMarks(values: strideLabels) { value in
-                    if let raw = value.as(String.self), strideSet.contains(raw) {
+                if isDayChart {
+                    AxisMarks(values: [0.0, 360, 720, 1080, 1439]) { value in
                         AxisGridLine()
-                        AxisValueLabel {
-                            Text(displayLabel(raw))
+                        if let minute = axisMinute(value) {
+                            if minute == 1439 {
+                                AxisValueLabel(anchor: .trailing) { Text("23:59") }
+                            } else {
+                                AxisValueLabel { Text(String(format: "%02d:00", minute / 60)) }
+                            }
+                        }
+                    }
+                } else {
+                    // Use numeric positions to keep bucket identity stable
+                    // while a report's data and chart are being replaced.
+                    AxisMarks(values: stridePositions) { value in
+                        if let index = value.as(Double.self),
+                           let point = points.first(where: { Double($0.index) == index }) {
+                            AxisGridLine()
+                            AxisValueLabel { Text(displayLabel(point.label)) }
                         }
                     }
                 }
@@ -304,25 +437,22 @@ public struct SeriesChartView: View {
             .chartYAxis {
                 AxisMarks(position: .trailing, values: .automatic(desiredCount: 4))
             }
+            .chartYScale(domain: 0...dayYMaximum)
             .frame(minHeight: 150)
             .accessibilityIdentifier("series-chart")
-            .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(points.count) buckets")
+            .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(visiblePoints.count) buckets")
             .accessibilityChartDescriptor(SeriesChartDescriptor(
                 title: MetricID.descriptor(for: metric).displayName,
-                labels: points.map { displayLabel($0.label) },
-                values: points.compactMap { point in
+                labels: visiblePoints.map { displayLabel($0.label) },
+                values: visiblePoints.compactMap { point in
                     point.value.map { (displayLabel(point.label), $0) }
                 }
             ))
-            .animation(.snappy, value: series)
-            .sensoryFeedback(.selection, trigger: selection)
+            .sensoryFeedback(.selection, trigger: selectedPoint?.index)
             if let detail = selectionDetail {
                 Text(detail)
                     .font(.callout)
                     .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: detail)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                     .accessibilityIdentifier("series-selection")
             }
 #if os(macOS)
@@ -334,7 +464,7 @@ public struct SeriesChartView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("series-table")
-                ForEach(points, id: \.index) { point in
+                ForEach(visiblePoints, id: \.index) { point in
                     HStack {
                         Text(displayLabel(point.label))
                         Spacer()
@@ -346,6 +476,24 @@ public struct SeriesChartView: View {
             }
 #endif
         }
+        .task(id: isToday) {
+            guard isToday else { return }
+            while !Task.isCancelled {
+                let now = Date()
+                var calendar = Calendar(identifier: .gregorian)
+                calendar.timeZone = timeZone
+                let nextHour = calendar.dateInterval(of: .hour, for: now)?.end ?? now.addingTimeInterval(3600)
+                do {
+                    try await Task.sleep(for: .seconds(max(1, nextHour.timeIntervalSince(now))))
+                } catch {
+                    return
+                }
+                clock = Date()
+            }
+        }
+        .onChange(of: metric) { _, _ in selection = nil }
+        .onChange(of: period) { _, _ in selection = nil }
+        .onChange(of: periodDate) { _, _ in selection = nil }
     }
 
     /// VoiceOver chart content: every bucket as an explorable data point,
@@ -384,26 +532,21 @@ public struct SeriesChartView: View {
     }
 
     private var primaryRuns: [PointRun] {
-        runs(value: \.value).map { PointRun(points: $0, kind: .primary) }
+        runs(value: \.value, in: visiblePoints).map { PointRun(points: $0, kind: .primary) }
     }
 
-    /// Every Nth bucket label, capped so at most ~6 land on the axis.
-    /// Matched by content (not just the values list) so labels can
-    /// never collide however the axis resolves marks.
-    private var strideLabels: [String] {
+    private var stridePositions: [Double] {
         let stride = max(1, (points.count + 5) / 6)
-        return points.enumerated().filter { $0.offset % stride == 0 }.map(\.element.label)
+        return points.enumerated().filter { $0.offset % stride == 0 }.map { Double($0.offset) }
     }
-
-    private var strideSet: Set<String> { Set(strideLabels) }
 
     private var comparisonRuns: [PointRun] {
-        guard points.contains(where: { $0.comparison != nil }) else { return [] }
-        return runs(value: \.comparison).map { PointRun(points: $0, kind: .comparison) }
+        guard visiblePoints.contains(where: { $0.comparison != nil }) else { return [] }
+        return runs(value: \.comparison, in: visiblePoints).map { PointRun(points: $0, kind: .comparison) }
     }
 
     /// Contiguous non-nil runs so lines never bridge genuine gaps.
-    private func runs(value keyPath: KeyPath<SeriesPoint, Double?>) -> [[SeriesPoint]] {
+    private func runs(value keyPath: KeyPath<SeriesPoint, Double?>, in points: [SeriesPoint]) -> [[SeriesPoint]] {
         var groups: [[SeriesPoint]] = []
         var current: [SeriesPoint] = []
         for point in points {
@@ -419,14 +562,20 @@ public struct SeriesChartView: View {
     }
 
     private var selectionDetail: String? {
-        guard let selection,
-              let point = points.first(where: { $0.label == selection })
-        else { return nil }
+        guard selection != nil, let point = selectedPoint else { return nil }
         var text = "\(displayLabel(point.label)): \(cellText(point))"
         if let rawComparison = point.rawComparison {
             text += " (comparison \(formatter.string(for: rawComparison, as: metric)))"
         }
         return text
+    }
+
+    private var selectedPoint: SeriesPoint? {
+        guard let selection, !points.isEmpty else { return nil }
+        guard let nearest = visiblePoints.min(by: { abs(xPosition(for: $0) - selection) < abs(xPosition(for: $1) - selection) }),
+              abs(xPosition(for: nearest) - selection) <= (isDayChart ? 2 : 0.5)
+        else { return nil }
+        return nearest
     }
 
     private func cellText(_ point: SeriesPoint) -> String {

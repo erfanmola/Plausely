@@ -114,10 +114,10 @@ public final class OverviewModel {
         )
     }
 
-    public func reload(query: DashboardQuery, today: Date? = nil) async {
+    public func reload(query: DashboardQuery, today: Date? = nil, revalidate: Bool = false) async {
         lastQuery = query
-        async let first: () = dashboard.overview.load(query: query, today: today)
-        async let second: () = dashboard.series.load(query: seriesQuery(from: query), today: today)
+        async let first: () = dashboard.overview.load(query: query, today: today, revalidate: revalidate)
+        async let second: () = dashboard.series.load(query: seriesQuery(from: query), today: today, revalidate: revalidate)
         async let third: () = loadTrend(for: query, today: today)
         await first
         await second

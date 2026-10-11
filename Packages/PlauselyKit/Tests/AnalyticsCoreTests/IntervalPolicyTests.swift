@@ -27,7 +27,7 @@ struct IntervalPolicyTests {
     @Test("valid current interval is kept")
     func keepsValid() {
         #expect(fullPolicy.currentInterval(.day, for: .days28, timeZone: utc, today: frozen) == .day)
-        #expect(fullPolicy.currentInterval(.hour, for: .day, timeZone: utc, today: frozen) == .hour)
+        #expect(fullPolicy.currentInterval(.minute, for: .day, timeZone: utc, today: frozen) == .hour)
         #expect(fullPolicy.currentInterval(.month, for: .year, timeZone: utc, today: frozen) == .month)
     }
 
@@ -60,7 +60,7 @@ struct IntervalPolicyTests {
         #expect(sparse.currentInterval(.week, for: .month, timeZone: utc, today: frozen) == .week)
     }
 
-    @Test("dashboard table default wins even when the map omits it")
+    @Test("Today uses hourly buckets even when bootstrap only lists minutes")
     func blindDefault() {
         let minuteOnly = IntervalPolicy(validByPeriod: ["day": [.minute]])
         #expect(minuteOnly.currentInterval(.day, for: .day, timeZone: utc, today: frozen) == .hour)

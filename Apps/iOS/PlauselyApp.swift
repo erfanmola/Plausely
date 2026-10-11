@@ -1,9 +1,11 @@
 import AnalyticsCore
 import DashboardUI
 import SwiftUI
+import WidgetKit
 
 @main
 struct PlauselyApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     /// Deterministic mock launch for UI smoke tests. Real dependency
     /// injection lands with feature work; this flag only swaps the root.
     static var isMockLaunch: Bool {
@@ -20,10 +22,11 @@ struct PlauselyApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if Self.isMockLaunch {
-                Text("Mock")
-            } else if Self.isMockSites {
-                HomeRootView(
+            Group {
+                if Self.isMockLaunch {
+                    Text("Mock")
+                } else if Self.isMockSites {
+                    HomeRootView(
                     directory: Self.directory,
                     overviewLoader: MockOverviewProviders.overview,
                     seriesLoader: MockOverviewProviders.series,
@@ -47,9 +50,15 @@ struct PlauselyApp: App {
                         )
                         return try? await MockOverviewProviders.series(query, Date()).value
                     }
-                )
-            } else {
-                LiveRootView()
+                    )
+                } else {
+                    LiveRootView()
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
             }
         }
     }

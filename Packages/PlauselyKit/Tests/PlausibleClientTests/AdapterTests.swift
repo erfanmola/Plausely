@@ -11,6 +11,13 @@ private struct CannedTransport: HTTPTransport {
     }
 }
 
+private final class RequestCapture: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: URLRequest?
+    func save(_ request: URLRequest) { lock.lock(); stored = request; lock.unlock() }
+    var request: URLRequest? { lock.lock(); defer { lock.unlock() }; return stored }
+}
+
 private func fixtureData(_ name: String) throws -> Data {
     guard let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures") else {
         throw FixtureError.missing(name)
@@ -204,6 +211,14 @@ struct AdapterTests {
         let items = try CE321DashboardAdapter.queryItems(for: base, today: today)
         let names = items.map(\.name)
         #expect(names.contains("period") && names.contains("filters") && names.contains("interval") == false)
+        let anchoredToday = DashboardQuery(
+            accountID: base.accountID, siteID: base.siteID, period: .day,
+            periodDate: ISO8601DateFormatter().date(from: "2026-10-10T20:30:00Z")!,
+            interval: .hour, selectedMetric: .visitors,
+            timeZone: TimeZone(identifier: "Asia/Tehran")!
+        )
+        let todayItems = try CE321DashboardAdapter.queryItems(for: anchoredToday, today: today)
+        #expect(todayItems.first(where: { $0.name == "date" })?.value == "2026-10-11")
         let custom = DashboardQuery(
             accountID: base.accountID, siteID: base.siteID,
             period: .custom(from: Date(timeIntervalSince1970: 1_750_000_000), to: Date(timeIntervalSince1970: 1_750_100_000)),
@@ -215,6 +230,41 @@ struct AdapterTests {
         for required in ["from", "to", "comparison", "match_day_of_week", "with_imported"] {
             #expect(customNames.contains(required), "missing \(required)")
         }
+    }
+
+    @Test("Today request pins the site-local date and bypasses URL cache")
+    func todayRequestIsFreshAndDatePinned() async throws {
+        let capture = RequestCapture()
+        let adapter = testStack { request in
+            capture.save(request)
+            return try fixtureData("top-stats.day")
+        }
+        let today = ISO8601DateFormatter().date(from: "2026-10-10T21:00:00Z")!
+        _ = try await adapter.overview(testQuery(), today: today)
+
+        let request = try #require(capture.request)
+        let requestURL = try #require(request.url)
+        let components = try #require(URLComponents(url: requestURL, resolvingAgainstBaseURL: false))
+        let items = try #require(components.queryItems)
+        #expect(items.first(where: { $0.name == "date" })?.value == "2026-10-11")
+        #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
+        #expect(request.value(forHTTPHeaderField: "Cache-Control") == "no-cache")
+    }
+
+    @Test("unresolved UTC fallback lets the server choose its site-local Today")
+    func todayWithUnresolvedTimeZoneUsesServerDay() throws {
+        let base = testQuery()
+        let utcQuery = DashboardQuery(
+            accountID: base.accountID,
+            siteID: base.siteID,
+            period: .day,
+            interval: .minute,
+            selectedMetric: .visitors,
+            timeZone: TimeZone(identifier: "UTC")!
+        )
+        let today = ISO8601DateFormatter().date(from: "2026-10-10T21:00:00Z")!
+        let items = try CE321DashboardAdapter.queryItems(for: utcQuery, today: today)
+        #expect(items.first(where: { $0.name == "date" }) == nil)
     }
 
     @Test("geo families decode codes, names, and share without engagement")

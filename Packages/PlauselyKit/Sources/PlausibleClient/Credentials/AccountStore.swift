@@ -110,6 +110,24 @@ public struct AccountStore: Sendable {
     }
 
     public static func production() throws -> AccountStore {
+        if let shared = PlauselySharedContainer.directory {
+            let sharedDirectory = shared.appending(path: "Accounts", directoryHint: .isDirectory)
+            let legacyBase = try FileManager.default.url(
+                for: .applicationSupportDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: true
+            ).appending(path: "Plausely", directoryHint: .isDirectory)
+            // Preserve accounts created before the widget app group existed.
+            try FileManager.default.createDirectory(at: sharedDirectory, withIntermediateDirectories: true)
+            if let oldFiles = try? FileManager.default.contentsOfDirectory(at: legacyBase, includingPropertiesForKeys: nil) {
+                for oldFile in oldFiles where oldFile.pathExtension == "json" {
+                    let newFile = sharedDirectory.appending(path: oldFile.lastPathComponent)
+                    if !FileManager.default.fileExists(atPath: newFile.path) {
+                        try? FileManager.default.copyItem(at: oldFile, to: newFile)
+                    }
+                }
+            }
+            return AccountStore(directory: sharedDirectory)
+        }
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true

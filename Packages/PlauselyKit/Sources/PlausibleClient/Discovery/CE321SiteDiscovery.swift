@@ -72,7 +72,8 @@ public struct CE321SiteDiscovery: SiteDiscoveryService, Sendable {
             return html
         }
         let snapshot = try CE321BootstrapDecoder.decode(html: try await fetch(domain))
-        let timeZone = CE321BootstrapDecoder.timezone(html: try await fetch("\(domain)/settings/general"))
+        let settingsHTML = try await fetch("\(domain)/settings/general")
+        let timeZone = CE321BootstrapDecoder.timezone(html: settingsHTML)
         return SiteBootstrap(snapshot: snapshot, timeZone: timeZone)
     }
 }

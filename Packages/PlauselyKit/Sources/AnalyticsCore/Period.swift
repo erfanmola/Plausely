@@ -70,8 +70,9 @@ public enum Comparison: Hashable, Sendable {
     }
 }
 
-/// Chart intervals. Allowed values per period come from the site bootstrap
-/// (`data-valid-intervals-by-period`), never hardcoded.
+/// Time-series intervals accepted by Plausible's graph endpoint. The site
+/// bootstrap map controls dashboard picker choices; Today may request an
+/// hourly bucket for a smoother day overview.
 public enum ChartInterval: String, Hashable, Codable, Sendable {
     case minute
     case hour
@@ -91,14 +92,9 @@ public struct IntervalPolicy: Hashable, Sendable {
         validByPeriod[period.wireValue]?.contains(interval) ?? false
     }
 
-    /// Dashboard-faithful current interval (mirrors `interval-picker.tsx`
-    /// `getCurrentInterval`/`getDefaultInterval`): the interval is a
-    /// function of the period alone — the dashboard stores one interval
-    /// per period and resolves fresh on every period change, never
-    /// carrying the previous period's interval over. So a stale `current`
-    /// (e.g. minute from realtime) never survives a period switch even
-    /// when it happens to be listed as valid: the table default wins,
-    /// then the first valid map entry, then the current value.
+    /// Interval is derived from period alone and never carries over from a
+    /// prior period. Today uses an hourly server bucket; other periods use
+    /// dashboard defaults, then the first valid map entry, then `current`.
     public func currentInterval(
         _ current: ChartInterval,
         for period: Period,
@@ -127,8 +123,8 @@ public struct IntervalPolicy: Hashable, Sendable {
         return validByPeriod[period.wireValue] ?? []
     }
 
-    /// Dashboard default per period (`defaultByPeriod` + custom rule),
-    /// nil when the map alone decides (first valid wins).
+    /// App default per period, nil when the map alone decides (first valid
+    /// wins). Today uses hourly buckets for a calmer full-day chart.
     public func defaultInterval(
         for period: Period,
         periodDate: Date? = nil,
@@ -137,6 +133,8 @@ public struct IntervalPolicy: Hashable, Sendable {
     ) -> ChartInterval? {
         switch period {
         case .realtime: return .minute
+        // The app's Today chart uses hourly server buckets so short minute
+        // level fluctuations do not turn the full day view into spikes.
         case .day: return .hour
         case .days7: return .day
         case .months6, .months12, .year: return .month

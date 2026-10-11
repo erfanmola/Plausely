@@ -68,9 +68,8 @@ public final class QueryModel {
     public var comparison: Comparison = .off
     public var matchDayOfWeek = true
     public var includeImported = false
-    /// Chart interval, conformed to the site's bootstrap policy on every
-    /// refresh: a stale interval from a previous period never reaches the
-    /// wire (the dashboard re-derives it the same way on period change).
+    /// Chart interval re-derived on every period change. Today uses hourly
+    /// server buckets; other periods follow the site's bootstrap defaults.
     public private(set) var interval: ChartInterval
     /// User-editable clauses. Locked clauses ride `locked`, never this list.
     public private(set) var clauses: [FilterClause] = []
@@ -252,6 +251,11 @@ public final class QueryModel {
     public func refresh() {
         if let policy = intervalPolicy {
             interval = policy.currentInterval(interval, for: period, periodDate: periodDate, timeZone: base.timeZone, today: clock())
+        } else if period == .day, interval != .hour {
+            // The single-day graph supports hourly buckets. Bootstrap can be
+            // temporarily unavailable during launch, so retain that choice
+            // without relying on a site's interval map.
+            interval = .hour
         }
         do {
             effective = try build()

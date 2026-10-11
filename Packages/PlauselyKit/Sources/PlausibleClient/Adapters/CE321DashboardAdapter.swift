@@ -34,7 +34,12 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
 
     static func queryItems(for query: DashboardQuery, today: Date) throws -> [URLQueryItem] {
         var items = [URLQueryItem(name: "period", value: query.period.wireValue)]
-        if let date = query.periodDate {
+        // A nil Today date lets Plausible resolve the current day in the
+        // site's own timezone. Only pin a client date when the query carries
+        // a non-UTC site timezone; UTC is also the app's unresolved fallback.
+        let hasResolvedSiteTimeZone = !["UTC", "GMT"].contains(query.timeZone.identifier)
+        let requestedDate = query.periodDate ?? (query.period == .day && hasResolvedSiteTimeZone ? today : nil)
+        if let date = requestedDate {
             items.append(URLQueryItem(name: "date", value: SiteDateRules.isoDay(date, in: query.timeZone)))
         }
         if case .custom = query.period {
@@ -62,10 +67,12 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     // MARK: - Calls
 
     private func authed(domain: String, endpoint: String, account: AccountID, items: [URLQueryItem]) async throws -> Data {
-        let request = try await requestFor(
+        var request = try await requestFor(
             domain: domain, path: "api/stats/\(domain)/\(endpoint)",
             account: account, items: items
         )
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         let (data, _) = try await transport.send(request)
         return data
     }

@@ -75,6 +75,7 @@ struct HomeHeaderPills: View {
             .glassCapsule()
         }
         .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .accessibilityIdentifier("home-site")
     }
 }
@@ -119,6 +120,7 @@ struct HomePeriodPill: View {
             .glassCapsule()
         }
         .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .accessibilityIdentifier("home-period")
     }
 
@@ -202,6 +204,7 @@ struct HomeOptionsView: View {
             .glassCapsule()
         }
         .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .accessibilityIdentifier("comparison-picker")
     }
 

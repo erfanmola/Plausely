@@ -207,6 +207,21 @@ struct ReportLifecycleTests {
         #expect(await script.totalCalls == 3) // B's entry survived
     }
 
+    @Test("Today revalidation bypasses a same-query cache entry")
+    func revalidateBypassesCache() async {
+        let script = LoaderScript()
+        let cache = ReportCache<Overview>()
+        let model = ReportModel<Overview>(loader: await script.loader(), cache: cache)
+        let query = makeQuery(account: AccountID(), domain: "today.example")
+
+        await model.load(query: query, today: frozenToday)
+        await script.setCount(24)
+        await model.load(query: query, today: frozenToday, revalidate: true)
+
+        #expect(await script.totalCalls == 2)
+        #expect(model.state.displayable?.value.stats.first?.value == .count(24))
+    }
+
     @Test("bounded cache evicts the oldest entry")
     func boundedEviction() async throws {
         let cache = ReportCache<Overview>(maxEntries: 2)
@@ -324,5 +339,58 @@ struct ErrorHygieneTests {
     func passthrough() {
         let known = ReportLoadError(message: "boom", kind: .server)
         #expect(ReportLoadError.wrap(known).message == "boom")
+    }
+}
+
+@Suite("query-switch invalidation")
+@MainActor
+struct QuerySwitchTests {
+    @Test("new query skeletons without stale, refresh keeps stale")
+    func switchInvalidates() async throws {
+        let script = LoaderScript()
+        let model = ReportModel<Overview>(loader: await script.loader())
+        let account = AccountID()
+        let old = makeQuery(account: account, domain: "swap.example", metric: .visitors)
+        let new = makeQuery(account: account, domain: "swap.example", metric: .pageviews)
+
+        await model.load(query: old, today: frozenToday)
+        #expect(model.state.displayable?.value.stats.first?.value == .count(10))
+
+        await script.setDelay(200_000_000, for: "swap.example")
+        let task = Task { await model.load(query: new, today: frozenToday) }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(model.state.isLoading)
+        #expect(model.state.displayable == nil)
+        await task.value
+        #expect(model.state.displayable?.value.stats.first?.metric == .pageviews)
+
+        // Same-query refresh keeps stale visible while revalidating.
+        await script.setCount(99)
+        let refresh = Task { await model.refresh(today: frozenToday) }
+        try await Task.sleep(nanoseconds: 50_000_000)
+        #expect(model.state.isLoading)
+        #expect(model.state.displayable?.value.stats.first?.metric == .pageviews)
+        await refresh.value
+    }
+
+    @Test("switch-back serves memory without refetching")
+    func switchBackInstant() async throws {
+        let script = LoaderScript()
+        let cache = ReportCache<Overview>()
+        let model = ReportModel<Overview>(loader: await script.loader(), cache: cache)
+        let account = AccountID()
+        let old = makeQuery(account: account, domain: "back.example", metric: .visitors)
+        let new = makeQuery(account: account, domain: "back.example", metric: .pageviews)
+
+        await model.load(query: old, today: frozenToday)
+        #expect(await script.totalCalls == 1)
+        await model.load(query: new, today: frozenToday)
+        #expect(await script.totalCalls == 2)
+        await model.load(query: old, today: frozenToday)
+        #expect(await script.totalCalls == 2)
+        #expect(model.state.displayable?.value.stats.first?.value == .count(10))
+        if case .loaded = model.state {} else {
+            Issue.record("expected loaded from cache, got \(model.state)")
+        }
     }
 }

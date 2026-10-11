@@ -565,7 +565,6 @@ public struct CountryDistributionView: View {
                 .frame(minHeight: CGFloat(max(120, bars.count * 28)))
                 .accessibilityLabel("Top countries by visitors, \(bars.count) bars")
                 .accessibilityIdentifier("country-chart")
-                .animation(.snappy, value: model.rows)
                 .sensoryFeedback(.selection, trigger: selection)
                 if let selection, let bar = bars.first(where: { $0.name == selection }) {
                     Text("\(bar.name): \(Int(bar.visitors)) visitors")
@@ -605,6 +604,7 @@ struct RowGlyph: View {
 public struct BreakdownSummaryView: View {
     @Bindable private var model: BreakdownModel
     private let query: DashboardQuery?
+    private let isActive: Bool
     private let previewCount: Int
     private let childFactory: BreakdownChildFactory?
     private let onFilter: BreakdownFilterAction?
@@ -616,10 +616,12 @@ public struct BreakdownSummaryView: View {
         query: DashboardQuery?,
         previewCount: Int = 5,
         childFactory: BreakdownChildFactory? = nil,
-        onFilter: BreakdownFilterAction? = nil
+        onFilter: BreakdownFilterAction? = nil,
+        isActive: Bool = true
     ) {
         self.model = model
         self.query = query
+        self.isActive = isActive
         self.previewCount = previewCount
         self.childFactory = childFactory
         self.onFilter = onFilter
@@ -707,7 +709,8 @@ public struct BreakdownSummaryView: View {
                     }
             }
         }
-        .task(id: query) {
+        .task(id: isActive ? query : nil) {
+            guard isActive else { return }
             if let query { await model.updateQuery(query) }
             if case .idle = model.state { await model.load() }
         }
@@ -1044,16 +1047,21 @@ public struct BreakdownReportView: View {
     private var prefix: String { model.definition.idPrefix }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if model.definition.supportsSearch {
-                TextField("Search \(model.definition.title.lowercased())", text: $searchText)
-                    .accessibilityIdentifier("\(prefix)-search")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                if model.definition.supportsSearch {
+                    TextField("Search \(model.definition.title.lowercased())", text: $searchText)
+                        .accessibilityIdentifier("\(prefix)-search")
+                }
+                sortChips
+                reportContent
+                completenessFooter
             }
-            sortChips
-            reportContent
-            completenessFooter
+            .padding()
         }
-        .padding()
+        .refreshable {
+            await model.load(today: Date())
+        }
         .sensoryFeedback(.selection, trigger: model.sort)
         .onChange(of: searchText) { _, query in
             // Explicit latest-wins debounce: the previous task dies on

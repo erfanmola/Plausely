@@ -46,7 +46,10 @@ public final class ReportModel<Value: Sendable> {
     }
 
     /// Cache-first load. Serves a matching cache entry with no fetch.
-    public func load(query: DashboardQuery, today: Date? = nil) async {
+    /// A new query invalidates the visible value (skeleton, never stale
+    /// data pushed aside); same-query loads and refreshes keep stale
+    /// visible. Memory (the cache) still serves switch-backs instantly.
+    public func load(query: DashboardQuery, today: Date? = nil, revalidate: Bool = false) async {
         let now = today ?? clock()
         let id: QueryID
         do {
@@ -56,12 +59,12 @@ public final class ReportModel<Value: Sendable> {
             return
         }
         if state.isLoading, loadingID == id { return } // dedup
-        if let cache, let hit = await cache.envelope(for: id) {
+        if !revalidate, let cache, let hit = await cache.envelope(for: id) {
             queryDidSettle(query: query, id: id)
             publishEnvelope(hit)
             return
         }
-        await fetch(query: query, id: id, today: now)
+        await fetch(query: query, id: id, today: now, keepStale: queryID == id)
     }
 
     /// Forced revalidation; keeps the current value visible as stale.
@@ -108,11 +111,11 @@ public final class ReportModel<Value: Sendable> {
 
     // MARK: - Internals
 
-    private func fetch(query: DashboardQuery, id: QueryID, today: Date) async {
+    private func fetch(query: DashboardQuery, id: QueryID, today: Date, keepStale: Bool = true) async {
         loadTask?.cancel()
         generation &+= 1
         let myGeneration = generation
-        let stale = state.displayable
+        let stale = keepStale ? state.displayable : nil
         self.query = query
         self.queryID = id
         loadingID = id
@@ -212,9 +215,9 @@ public final class DashboardModel {
     }
 
     /// Loads both reports for the query. Failures are contained per report.
-    public func load(query: DashboardQuery, today: Date? = nil) async {
-        async let first: () = overview.load(query: query, today: today)
-        async let second: () = series.load(query: query, today: today)
+    public func load(query: DashboardQuery, today: Date? = nil, revalidate: Bool = false) async {
+        async let first: () = overview.load(query: query, today: today, revalidate: revalidate)
+        async let second: () = series.load(query: query, today: today, revalidate: revalidate)
         await first
         await second
     }

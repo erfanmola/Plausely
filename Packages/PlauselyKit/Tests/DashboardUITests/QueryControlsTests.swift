@@ -276,10 +276,10 @@ struct QueryIntervalTests {
         #expect(try #require(model.effective).interval == .day)
     }
 
-    @Test("no policy keeps the legacy sticky interval")
-    func legacyWithoutPolicy() throws {
+    @Test("single-day period uses hourly buckets when bootstrap policy is unavailable")
+    func dayPeriodWithoutPolicyUsesHourlyBuckets() throws {
         let model = QueryModel(base: baseQuery())
         model.setPeriod(.day)
-        #expect(try #require(model.effective).interval == .day)
+        #expect(try #require(model.effective).interval == .hour)
     }
 }

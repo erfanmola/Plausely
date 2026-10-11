@@ -6,6 +6,7 @@ import SwiftUI
 /// macOS). Owns the window's selection and every report model; loaders
 /// arrive injected so mock and live share every pixel on both platforms.
 public struct HomeRootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     public enum Tab: String, Hashable, CaseIterable {
         case overview, breakdowns, goals, settings
     }
@@ -43,8 +44,8 @@ public struct HomeRootView: View {
     /// model, before any report model builds from it.
     private let applyLock: (@MainActor (QueryModel) async -> Void)?
     /// Site bootstrap interval map for the query's site. The query model
-    /// re-derives the chart interval from it on every period change, so
-    /// a stale bootstrap interval never reaches the wire.
+    /// re-derives intervals on period changes (with an hourly Today chart),
+    /// so a stale interval never reaches the wire.
     private let resolvePolicy: (@MainActor (DashboardQuery) async -> IntervalPolicy?)?
     /// Per-site visitors preview for the picker list. Failures degrade to
     /// the plain row; never fake data.
@@ -104,13 +105,15 @@ public struct HomeRootView: View {
                 systemsModel: systemsModel,
                 childFactory: childFactory,
                 onFilter: filterAction,
-                onExport: onExport
+                onExport: onExport,
+                isActive: selectedTab == .breakdowns
             )
             .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle") }
             .tag(Tab.breakdowns)
             HomeGoalsTab(
                 queryModel: queryModel, goalsModel: goalsModel,
-                childFactory: childFactory, onFilter: filterAction
+                childFactory: childFactory, onFilter: filterAction,
+                isActive: selectedTab == .goals
             )
             .tabItem { Label("Goals", systemImage: "target") }
             .tag(Tab.goals)
@@ -125,12 +128,60 @@ public struct HomeRootView: View {
             saveControls()
             updateRealtimeTick()
         }
+        .onChange(of: selectedTab) { _, _ in
+            updateRealtimeTick()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await reloadTodayIfNeeded() }
+            }
+        }
+        .task(id: queryModel?.effective) {
+            await refreshTodayAtSiteMidnight(queryModel?.effective)
+        }
         .task {
             await selection.loadAccounts()
         }
     }
 
     // MARK: - Wiring (mirrors the legacy roots; only loaders differ)
+
+    private func reloadTodayIfNeeded() async {
+        guard let query = queryModel?.effective,
+              query.period == .day,
+              query.periodDate == nil else { return }
+        // A cache-first reload can return yesterday's same-day entry when
+        // the local query timezone has not caught up with the site's day.
+        // Today must always revalidate against the server on foregrounding.
+        await overviewModel?.refresh(today: Date())
+    }
+
+    private func refreshTodayAtSiteMidnight(_ query: DashboardQuery?) async {
+        guard let query, query.period == .day, query.periodDate == nil else { return }
+        while !Task.isCancelled {
+            let now = Date()
+            let nextRefresh = [query.timeZone, .current]
+                .compactMap { timeZone -> Date? in
+                    var calendar = Calendar(identifier: .gregorian)
+                    calendar.timeZone = timeZone
+                    return calendar.nextDate(
+                        after: now,
+                        matching: DateComponents(hour: 0, minute: 5),
+                        matchingPolicy: .nextTime
+                    )
+                }
+                .min()
+            guard let nextRefresh else { return }
+            do {
+                try await Task.sleep(for: .seconds(nextRefresh.timeIntervalSince(now)))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            // Force the Today reports past the local cache at the day boundary.
+            await overviewModel?.refresh(today: Date())
+        }
+    }
 
     /// Persists the working controls per site so revisits restore them.
     private func saveControls() {
@@ -219,19 +270,24 @@ public struct HomeRootView: View {
             realtimeModel.onTick = nil
             return
         }
-        realtimeModel.onTick = { [queryModel, overviewModel, channelsModel, sourcesModel, pagesModel, entryModel, exitModel, countriesModel, browsersModel, screensModel, systemsModel, goalsModel] in
+        realtimeModel.onTick = { [queryModel, overviewModel, channelsModel, sourcesModel, pagesModel, entryModel, exitModel, countriesModel, browsersModel, screensModel, systemsModel, goalsModel, selectedTab] in
             guard let current = queryModel?.effective else { return }
-            await overviewModel?.reload(query: current)
-            await channelsModel?.load()
-            await sourcesModel?.load()
-            await pagesModel?.load()
-            await entryModel?.load()
-            await exitModel?.load()
-            await countriesModel?.load()
-            await browsersModel?.load()
-            await screensModel?.load()
-            await systemsModel?.load()
-            await goalsModel?.load()
+            switch selectedTab {
+            case .overview:
+                await overviewModel?.reload(query: current)
+            case .breakdowns:
+                let models = [channelsModel, sourcesModel, pagesModel, entryModel, exitModel,
+                              countriesModel, browsersModel, screensModel, systemsModel].compactMap { $0 }
+                await withTaskGroup(of: Void.self) { group in
+                    for model in models {
+                        group.addTask { await model.load() }
+                    }
+                }
+            case .goals:
+                await goalsModel?.load()
+            case .settings:
+                break
+            }
         }
     }
 }

@@ -20,7 +20,18 @@
 		B1B2C3D4E5F60088 /* PlausibleClient in Frameworks */ = {isa = PBXBuildFile; productRef = B1B2C3D4E5F60084 /* PlausibleClient */; };
 		B1B2C3D4E5F60092 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60090 /* Assets.xcassets */; };
 		B1B2C3D4E5F60093 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60091 /* Assets.xcassets */; };
+        C1B2C3D4E5F60001 /* PlauselyWidget iOS source */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60011 /* PlauselyWidget.swift */; };
+        C1B2C3D4E5F60002 /* PlauselyWidget macOS source */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60011 /* PlauselyWidget.swift */; };
+        C1B2C3D4E5F60003 /* iOS PlausibleClient */ = {isa = PBXBuildFile; productRef = C1B2C3D4E5F60021 /* PlausibleClient iOS Widget */; };
+        C1B2C3D4E5F60004 /* macOS PlausibleClient */ = {isa = PBXBuildFile; productRef = C1B2C3D4E5F60022 /* PlausibleClient macOS Widget */; };
+        C1B2C3D4E5F60005 /* iOS widget embed */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+        C1B2C3D4E5F60006 /* macOS widget embed */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C1B2C3D4E5F60050 /* Embed iOS widget extension */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (C1B2C3D4E5F60005 /* iOS widget embed */, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+		C1B2C3D4E5F60051 /* Embed macOS widget extension */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (C1B2C3D4E5F60006 /* macOS widget embed */, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
 		A1B2C3D4E5F60071 /* PBXContainerItemProxy */ = {
@@ -37,6 +48,8 @@
 			remoteGlobalIDString = A1B2C3D4E5F60021;
 			remoteInfo = "Plausely-macOS";
 		};
+        C1B2C3D4E5F60007 /* iOS widget proxy */ = {isa = PBXContainerItemProxy; containerPortal = A1B2C3D4E5F60030 /* Project object */; proxyType = 1; remoteGlobalIDString = C1B2C3D4E5F60030; remoteInfo = PlauselyWidget-iOS; };
+        C1B2C3D4E5F60008 /* macOS widget proxy */ = {isa = PBXContainerItemProxy; containerPortal = A1B2C3D4E5F60030 /* Project object */; proxyType = 1; remoteGlobalIDString = C1B2C3D4E5F60031; remoteInfo = PlauselyWidget-macOS; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +70,13 @@
 		B1B2C3D4E5F60083 /* LiveWiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWiring.swift; sourceTree = "<group>"; };
 		B1B2C3D4E5F60090 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B1B2C3D4E5F60091 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+        C1B2C3D4E5F60011 /* PlauselyWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyWidget.swift; sourceTree = "<group>"; };
+        C1B2C3D4E5F60014 /* iOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "iOS-Info.plist"; sourceTree = "<group>"; };
+        C1B2C3D4E5F60015 /* macOS-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "macOS-Info.plist"; sourceTree = "<group>"; };
+        C1B2C3D4E5F60016 /* iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "iOS.entitlements"; sourceTree = "<group>"; };
+        C1B2C3D4E5F60017 /* macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "macOS.entitlements"; sourceTree = "<group>"; };
+        C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PlauselyWidget-iOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+        C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PlauselyWidget-macOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +98,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+        C1B2C3D4E5F60020 /* iOS widget Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60003 /* iOS PlausibleClient */, ); runOnlyForDeploymentPostprocessing = 0; };
+        C1B2C3D4E5F60023 /* macOS widget Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60004 /* macOS PlausibleClient */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -96,10 +118,12 @@
 			children = (
 				A1B2C3D4E5F60003 /* iOS */,
 				A1B2C3D4E5F60004 /* macOS */,
+				C1B2C3D4E5F60024 /* Widgets */,
 			);
 			path = Apps;
 			sourceTree = "<group>";
 		};
+		C1B2C3D4E5F60024 /* Widgets */ = {isa = PBXGroup; children = (C1B2C3D4E5F60011 /* PlauselyWidget.swift */, C1B2C3D4E5F60014 /* iOS-Info.plist */, C1B2C3D4E5F60015 /* macOS-Info.plist */, C1B2C3D4E5F60016 /* iOS.entitlements */, C1B2C3D4E5F60017 /* macOS.entitlements */, ); path = Widgets; sourceTree = "<group>"; };
 		A1B2C3D4E5F60003 /* iOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -128,6 +152,8 @@
 			children = (
 				A1B2C3D4E5F60015 /* Plausely.app */,
 				A1B2C3D4E5F60016 /* Plausely.app */,
+				C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */,
+				C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */,
 				A1B2C3D4E5F60064 /* PlauselyiOSUITests.xctest */,
 				A1B2C3D4E5F60065 /* PlauselyMacOSUITests.xctest */,
 			);
@@ -178,12 +204,14 @@
 				A1B2C3D4E5F60031 /* Sources */,
 				A1B2C3D4E5F60032 /* Frameworks */,
 				B1B2C3D4E5F60094 /* Resources */,
+				C1B2C3D4E5F60050 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				A1B2C3D4E5F60047 /* PBXTargetDependency */,
 				B1B2C3D4E5F60085 /* PBXTargetDependency */,
+				C1B2C3D4E5F60060 /* iOS widget dependency */,
 			);
 			name = "Plausely-iOS";
 			packageProductDependencies = (
@@ -201,12 +229,14 @@
 				A1B2C3D4E5F60033 /* Sources */,
 				A1B2C3D4E5F60034 /* Frameworks */,
 				B1B2C3D4E5F60095 /* Resources */,
+				C1B2C3D4E5F60051 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				A1B2C3D4E5F60048 /* PBXTargetDependency */,
 				B1B2C3D4E5F60086 /* PBXTargetDependency */,
+				C1B2C3D4E5F60061 /* macOS widget dependency */,
 			);
 			name = "Plausely-macOS";
 			packageProductDependencies = (
@@ -249,6 +279,8 @@
 			productReference = A1B2C3D4E5F60065 /* PlauselyMacOSUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		C1B2C3D4E5F60030 /* PlauselyWidget-iOS */ = {isa = PBXNativeTarget; buildConfigurationList = C1B2C3D4E5F60062 /* iOS widget configs */; buildPhases = (C1B2C3D4E5F60040 /* iOS widget Sources */, C1B2C3D4E5F60020 /* iOS widget Frameworks */, ); buildRules = (); dependencies = (); name = "PlauselyWidget-iOS"; packageProductDependencies = (C1B2C3D4E5F60021 /* PlausibleClient iOS Widget */, ); productName = PlauselyWidget; productReference = C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */; productType = "com.apple.product-type.app-extension"; };
+		C1B2C3D4E5F60031 /* PlauselyWidget-macOS */ = {isa = PBXNativeTarget; buildConfigurationList = C1B2C3D4E5F60063 /* macOS widget configs */; buildPhases = (C1B2C3D4E5F60042 /* macOS widget Sources */, C1B2C3D4E5F60023 /* macOS widget Frameworks */, ); buildRules = (); dependencies = (); name = "PlauselyWidget-macOS"; packageProductDependencies = (C1B2C3D4E5F60022 /* PlausibleClient macOS Widget */, ); productName = PlauselyWidget; productReference = C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */; productType = "com.apple.product-type.app-extension"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -277,6 +309,10 @@
 				A1B2C3D4E5F60021 /* Plausely-macOS */,
 				A1B2C3D4E5F60069 /* PlauselyiOSUITests */,
 				A1B2C3D4E5F6006A /* PlauselyMacOSUITests */,
+				C1B2C3D4E5F60030 /* PlauselyWidget-iOS */,
+				C1B2C3D4E5F60031 /* PlauselyWidget-macOS */,
+				C1B2C3D4E5F60030 /* PlauselyWidget-iOS */,
+				C1B2C3D4E5F60031 /* PlauselyWidget-macOS */,
 			);
 		};
 /* End PBXProject section */
@@ -336,6 +372,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C1B2C3D4E5F60040 /* iOS widget Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60001 /* PlauselyWidget iOS source */, ); runOnlyForDeploymentPostprocessing = 0; };
+		C1B2C3D4E5F60042 /* macOS widget Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60002 /* PlauselyWidget macOS source */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -365,6 +403,8 @@
 			isa = PBXTargetDependency;
 			productRef = B1B2C3D4E5F60084 /* PlausibleClient */;
 		};
+		C1B2C3D4E5F60060 /* iOS widget dependency */ = {isa = PBXTargetDependency; target = C1B2C3D4E5F60030 /* PlauselyWidget-iOS */; targetProxy = C1B2C3D4E5F60007 /* iOS widget proxy */; };
+		C1B2C3D4E5F60061 /* macOS widget dependency */ = {isa = PBXTargetDependency; target = C1B2C3D4E5F60031 /* PlauselyWidget-macOS */; targetProxy = C1B2C3D4E5F60008 /* macOS widget proxy */; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -408,6 +448,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/iOS/Plausely.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = CY772VBW44;
 				INFOPLIST_FILE = Apps/iOS/Info.plist;
@@ -417,6 +458,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				PRODUCT_NAME = Plausely;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
@@ -429,6 +471,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/iOS/Plausely.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = Apps/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -437,6 +480,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				PRODUCT_NAME = Plausely;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
@@ -452,7 +496,12 @@
 				CODE_SIGN_ENTITLEMENTS = Apps/macOS/Plausely.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CY772VBW44;
+				MARKETING_VERSION = 0.1.0;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleVersion = 1;
+				INFOPLIST_KEY_PlauselyKeychainAccessGroup = "$(AppIdentifierPrefix)ir.developex.PlauselyMac";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac;
 				PRODUCT_NAME = Plausely;
@@ -469,7 +518,12 @@
 				CODE_SIGN_ENTITLEMENTS = Apps/macOS/Plausely.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CY772VBW44;
+				MARKETING_VERSION = 0.1.0;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleVersion = 1;
+				INFOPLIST_KEY_PlauselyKeychainAccessGroup = "$(AppIdentifierPrefix)ir.developex.PlauselyMac";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac;
 				PRODUCT_NAME = Plausely;
@@ -554,6 +608,10 @@
 			};
 			name = Release;
 		};
+		C1B2C3D4E5F60064 /* Widget iOS Debug */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/iOS.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/iOS-Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Debug; };
+		C1B2C3D4E5F60065 /* Widget iOS Release */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/iOS.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/iOS-Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
+		C1B2C3D4E5F60066 /* Widget macOS Debug */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/macOS.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/macOS-Info.plist; MACOSX_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = macosx; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Debug; };
+		C1B2C3D4E5F60067 /* Widget macOS Release */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/macOS.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/macOS-Info.plist; MACOSX_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = macosx; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -602,6 +660,8 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		C1B2C3D4E5F60062 /* iOS widget configs */ = {isa = XCConfigurationList; buildConfigurations = (C1B2C3D4E5F60064 /* Widget iOS Debug */, C1B2C3D4E5F60065 /* Widget iOS Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		C1B2C3D4E5F60063 /* macOS widget configs */ = {isa = XCConfigurationList; buildConfigurations = (C1B2C3D4E5F60066 /* Widget macOS Debug */, C1B2C3D4E5F60067 /* Widget macOS Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -620,6 +680,8 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PlausibleClient;
 		};
+		C1B2C3D4E5F60021 /* PlausibleClient iOS Widget */ = {isa = XCSwiftPackageProductDependency; package = A1B2C3D4E5F60017 /* XCLocalSwiftPackageReference "Packages/PlauselyKit" */; productName = PlausibleClient; };
+		C1B2C3D4E5F60022 /* PlausibleClient macOS Widget */ = {isa = XCSwiftPackageProductDependency; package = A1B2C3D4E5F60017 /* XCLocalSwiftPackageReference "Packages/PlauselyKit" */; productName = PlausibleClient; };
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1B2C3D4E5F60030 /* Project object */;

@@ -43,14 +43,15 @@ struct HomeOverviewTab: View {
                                 state: overviewModel.dashboard.series.state,
                                 onRetry: { Task { await overviewModel.refresh() } },
                                 content: {
-                                    SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric, period: effective.period, timeZone: effective.timeZone)
+                                    SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric, period: effective.period, periodDate: effective.periodDate, timeZone: effective.timeZone)
                                 }
                             )
                         }
                         Spacer(minLength: 90)
-                            .task(id: effective) {
-                                await overviewModel.reload(query: effective)
-                            }
+                        .task(id: effective) {
+                            let isToday = effective.period == .day && effective.periodDate == nil
+                            await overviewModel.reload(query: effective, revalidate: isToday)
+                        }
                     }
                     HomeOptionsView(model: queryModel)
                     HomeCard {
@@ -64,6 +65,13 @@ struct HomeOverviewTab: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
+        }
+        .refreshable {
+            if let overviewModel {
+                await overviewModel.refresh(today: Date())
+            } else {
+                await selection.retrySites()
+            }
         }
         .accessibilityIdentifier("home-pane-overview")
     }
@@ -84,6 +92,7 @@ struct HomeBreakdownsTab: View {
     var childFactory: BreakdownChildFactory?
     var onFilter: BreakdownFilterAction?
     var onExport: ExportButton.Exporter?
+    var isActive = true
 
     var body: some View {
         ScrollView {
@@ -115,6 +124,15 @@ struct HomeBreakdownsTab: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
         }
+        .refreshable {
+            let models = [channelsModel, sourcesModel, pagesModel, entryModel, exitModel,
+                          countriesModel, browsersModel, screensModel, systemsModel].compactMap { $0 }
+            await withTaskGroup(of: Void.self) { group in
+                for model in models {
+                    group.addTask { await model.load(today: Date()) }
+                }
+            }
+        }
         .accessibilityIdentifier("home-pane-breakdowns")
     }
 
@@ -132,7 +150,8 @@ struct HomeBreakdownsTab: View {
                         model: model,
                         query: queryModel?.effective,
                         childFactory: childFactory,
-                        onFilter: onFilter
+                        onFilter: onFilter,
+                        isActive: isActive
                     )
                 }
             }
@@ -146,6 +165,7 @@ struct HomeGoalsTab: View {
     var goalsModel: BreakdownModel?
     var childFactory: BreakdownChildFactory?
     var onFilter: BreakdownFilterAction?
+    var isActive = true
 
     var body: some View {
         ScrollView {
@@ -160,7 +180,8 @@ struct HomeGoalsTab: View {
                                 model: goalsModel,
                                 query: queryModel?.effective,
                                 childFactory: childFactory,
-                                onFilter: onFilter
+                                onFilter: onFilter,
+                                isActive: isActive
                             )
                         }
                     }
@@ -180,6 +201,9 @@ struct HomeGoalsTab: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
+        }
+        .refreshable {
+            await goalsModel?.load(today: Date())
         }
         .accessibilityIdentifier("home-pane-goals")
     }
@@ -237,6 +261,9 @@ struct HomeSettingsTab: View {
         }
         .accessibilityIdentifier("home-pane-settings")
         .task {
+            await selection.loadAccounts()
+        }
+        .refreshable {
             await selection.loadAccounts()
         }
     }

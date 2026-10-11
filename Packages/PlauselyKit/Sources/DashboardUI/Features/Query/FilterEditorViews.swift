@@ -42,7 +42,7 @@ public enum MockQueryProviders {
     public static var intervals: IntervalPolicy {
         IntervalPolicy(validByPeriod: [
             "realtime": [.minute],
-            "day": [.minute, .hour],
+            "day": [.minute],
             "7d": [.hour, .day],
             "28d": [.day, .week],
             "30d": [.day, .week],
