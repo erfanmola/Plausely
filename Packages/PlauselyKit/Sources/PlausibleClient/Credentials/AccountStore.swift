@@ -101,12 +101,20 @@ public enum AccountStoreError: Error, Equatable {
 /// Removal deletes the record file; callers must also clear the credential
 /// store and any cached analytics (see session deletion flow, phase 03.3).
 public struct AccountStore: Sendable {
+    private static let sharedRecordService = "ir.developex.Plausely.shared-accounts"
     private let directory: URL
+    private let sharedKeychainAccessGroup: String?
 
     /// - Parameter directory: production passes Application Support/Plausely;
     ///   tests inject an isolated temporary directory.
     public init(directory: URL) {
         self.directory = directory
+        self.sharedKeychainAccessGroup = nil
+    }
+
+    private init(directory: URL, sharedKeychainAccessGroup: String?) {
+        self.directory = directory
+        self.sharedKeychainAccessGroup = sharedKeychainAccessGroup
     }
 
     public static func production() throws -> AccountStore {
@@ -133,18 +141,25 @@ public struct AccountStore: Sendable {
                         }
                     }
                 }
-                return AccountStore(directory: sharedDirectory)
+                return AccountStore(directory: sharedDirectory, sharedKeychainAccessGroup: nil)
             } catch {
-                if let localDirectory { return AccountStore(directory: localDirectory) }
+                if let localDirectory {
+                    return AccountStore(directory: localDirectory, sharedKeychainAccessGroup: SharedKeychainDataStore.accessGroup)
+                }
                 throw error
             }
         }
-        if let localDirectory { return AccountStore(directory: localDirectory) }
+        if let localDirectory {
+            return AccountStore(directory: localDirectory, sharedKeychainAccessGroup: SharedKeychainDataStore.accessGroup)
+        }
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true
         )
-        return AccountStore(directory: base.appending(path: "Plausely", directoryHint: .isDirectory))
+        return AccountStore(
+            directory: base.appending(path: "Plausely", directoryHint: .isDirectory),
+            sharedKeychainAccessGroup: SharedKeychainDataStore.accessGroup
+        )
     }
 
     private func file(for id: AccountID) -> URL {
@@ -156,6 +171,13 @@ public struct AccountStore: Sendable {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(record)
             try data.write(to: file(for: record.id), options: .atomic)
+            if let sharedKeychainAccessGroup {
+                try SharedKeychainDataStore.save(
+                    data, service: Self.sharedRecordService,
+                    key: record.id.rawValue.uuidString,
+                    accessGroup: sharedKeychainAccessGroup
+                )
+            }
         } catch let error as AccountStoreError {
             throw error
         } catch {
@@ -165,7 +187,23 @@ public struct AccountStore: Sendable {
 
     public func load(id: AccountID) throws -> AccountRecord? {
         let url = file(for: id)
-        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            guard let sharedKeychainAccessGroup,
+                  let data = SharedKeychainDataStore.load(
+                    service: Self.sharedRecordService,
+                    key: id.rawValue.uuidString,
+                    accessGroup: sharedKeychainAccessGroup
+                  ) else { return nil }
+            do {
+                var record = try JSONDecoder().decode(AccountRecord.self, from: data)
+                record = try migrate(record)
+                return record
+            } catch let error as AccountStoreError {
+                throw error
+            } catch {
+                throw AccountStoreError.corruptStore(id.rawValue.uuidString)
+            }
+        }
         do {
             let data = try Data(contentsOf: url)
             var record = try JSONDecoder().decode(AccountRecord.self, from: data)
@@ -180,12 +218,33 @@ public struct AccountStore: Sendable {
 
     public func allIDs() throws -> [AccountID] {
         do {
-            guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
-            return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-                .compactMap { url in
+            let files: [URL] = FileManager.default.fileExists(atPath: directory.path)
+                ? try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                : []
+            let fileIDs: [AccountID] = files.compactMap { url -> AccountID? in
                     guard url.pathExtension == "json", let uuid = UUID(uuidString: url.deletingPathExtension().lastPathComponent) else { return nil }
                     return AccountID(rawValue: uuid)
                 }
+            guard let sharedKeychainAccessGroup else { return fileIDs }
+            let keychainIDs = SharedKeychainDataStore.keys(
+                service: Self.sharedRecordService,
+                accessGroup: sharedKeychainAccessGroup
+            ).compactMap(UUID.init(uuidString:)).map(AccountID.init(rawValue:))
+
+            // Expand then migrate: old account files remain usable, while a
+            // widget can read a shared copy even if its sandbox has a separate
+            // Application Support directory. Retrying allIDs is idempotent.
+            for id in fileIDs where !keychainIDs.contains(id) {
+                if let record = try? load(id: id),
+                   let data = try? JSONEncoder().encode(record) {
+                    try? SharedKeychainDataStore.save(
+                        data, service: Self.sharedRecordService,
+                        key: id.rawValue.uuidString,
+                        accessGroup: sharedKeychainAccessGroup
+                    )
+                }
+            }
+            return Array(Set(fileIDs).union(keychainIDs))
         } catch {
             throw AccountStoreError.io(error.localizedDescription)
         }
@@ -193,8 +252,16 @@ public struct AccountStore: Sendable {
 
     public func remove(id: AccountID) throws {
         do {
-            guard FileManager.default.fileExists(atPath: file(for: id).path) else { return }
-            try FileManager.default.removeItem(at: file(for: id))
+            if FileManager.default.fileExists(atPath: file(for: id).path) {
+                try FileManager.default.removeItem(at: file(for: id))
+            }
+            if let sharedKeychainAccessGroup {
+                try SharedKeychainDataStore.remove(
+                    service: Self.sharedRecordService,
+                    key: id.rawValue.uuidString,
+                    accessGroup: sharedKeychainAccessGroup
+                )
+            }
         } catch {
             throw AccountStoreError.io(error.localizedDescription)
         }

@@ -28,15 +28,23 @@ public enum PlauselySharedContainer {
 }
 
 public enum WidgetSiteCatalog {
+    private static let sharedKeychainService = "ir.developex.Plausely.widget-sites"
+
     private static var file: URL? {
         PlauselySharedContainer.directory?.appending(path: "widget-sites.json")
     }
 
     public static func all() -> [WidgetSiteOption] {
-        guard let file, let data = try? Data(contentsOf: file),
-              let sites = try? JSONDecoder().decode([WidgetSiteOption].self, from: data)
-        else { return [] }
-        return sites.sorted { $0.domain.localizedCaseInsensitiveCompare($1.domain) == .orderedAscending }
+        var sites = decode(file.flatMap { try? Data(contentsOf: $0) })
+        sites.append(contentsOf: decode(SharedKeychainDataStore.load(
+            service: sharedKeychainService,
+            key: "catalog"
+        )))
+        var byID: [String: WidgetSiteOption] = [:]
+        for site in sites { byID[site.id] = site }
+        return byID.values.sorted {
+            $0.domain.localizedCaseInsensitiveCompare($1.domain) == .orderedAscending
+        }
     }
 
     public static func replace(accountID: AccountID, with sites: [WidgetSiteOption]) {
@@ -50,12 +58,20 @@ public enum WidgetSiteCatalog {
     }
 
     private static func save(_ sites: [WidgetSiteOption]) {
-        guard let file, let data = try? JSONEncoder().encode(sites) else { return }
-        do {
-            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: file, options: .atomic)
-        } catch {
-            // Widgets can still show previously cached timelines if catalog I/O fails.
+        guard let data = try? JSONEncoder().encode(sites) else { return }
+        if let file {
+            do {
+                try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: file, options: .atomic)
+            } catch {
+                // Fall through to the shared keychain for unsigned App Groups.
+            }
         }
+        try? SharedKeychainDataStore.save(data, service: sharedKeychainService, key: "catalog")
+    }
+
+    private static func decode(_ data: Data?) -> [WidgetSiteOption] {
+        guard let data else { return [] }
+        return (try? JSONDecoder().decode([WidgetSiteOption].self, from: data)) ?? []
     }
 }

@@ -29,6 +29,23 @@ struct StoreTests {
         try await store.remove(for: second)
     }
 
+    @Test("shared keychain data can be listed, read, replaced, and removed")
+    func sharedKeychainDataRoundtrip() throws {
+        let service = "ir.developex.Plausely.test-shared-\(UUID().uuidString)"
+        let key = "catalog"
+        let first = Data("first".utf8)
+        let second = Data("second".utf8)
+        defer { try? SharedKeychainDataStore.remove(service: service, key: key, accessGroup: nil) }
+
+        try SharedKeychainDataStore.save(first, service: service, key: key, accessGroup: nil)
+        #expect(SharedKeychainDataStore.load(service: service, key: key, accessGroup: nil) == first)
+        #expect(SharedKeychainDataStore.keys(service: service, accessGroup: nil).contains(key))
+        try SharedKeychainDataStore.save(second, service: service, key: key, accessGroup: nil)
+        #expect(SharedKeychainDataStore.load(service: service, key: key, accessGroup: nil) == second)
+        try SharedKeychainDataStore.remove(service: service, key: key, accessGroup: nil)
+        #expect(SharedKeychainDataStore.load(service: service, key: key, accessGroup: nil) == nil)
+    }
+
     @Test("cookie records rebuild usable cookies")
     func cookieRoundtrip() {
         let record = CookieRecord(name: "session", value: "abc", domain: "x.test", path: "/", secure: true, httpOnly: true)
