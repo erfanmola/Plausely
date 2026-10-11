@@ -171,6 +171,7 @@ struct PlauselyWidgetEntry: TimelineEntry {
     let destinationURL: URL?
     let metrics: [(name: String, value: String)]
     let chartValues: [Double?]
+    let chartEstimateValues: [Double?]
     let chartCurrentMinute: Double?
     let error: String?
 
@@ -178,7 +179,8 @@ struct PlauselyWidgetEntry: TimelineEntry {
         Self(date: date, domain: "your-site.com", period: "Last 28 days", refreshCadence: .thirtyMinutes,
              destinationURL: nil,
              metrics: [("Visitors", "12,480"), ("Visits", "15,204"), ("Pageviews", "28,710")],
-             chartValues: [2, 3, 2, 5, 4, 7, 6, 8, 7, 9], chartCurrentMinute: nil, error: nil)
+             chartValues: [2, 3, 2, 5, 4, 7, 6, 8, 7, 9], chartEstimateValues: [],
+             chartCurrentMinute: nil, error: nil)
     }
 }
 
@@ -241,6 +243,7 @@ private enum WidgetReportLoader {
                     destinationURL: WidgetSiteDestination(accountID: AccountID(rawValue: uuid), domain: site.domain).url,
                     metrics: [("Current visitors", NumberFormatter.localizedString(from: NSNumber(value: current.count), number: .decimal))],
                     chartValues: [],
+                    chartEstimateValues: [],
                     chartCurrentMinute: nil,
                     error: nil
                 )
@@ -253,6 +256,7 @@ private enum WidgetReportLoader {
                 siteID: SiteID(domain: site.domain, teamID: option?.teamID),
                 period: period,
                 periodDate: period == .day ? now : nil,
+                comparison: period == .day ? .previousPeriod : .off,
                 interval: interval,
                 selectedMetric: .visitors,
                 timeZone: zone
@@ -276,6 +280,17 @@ private enum WidgetReportLoader {
                 chartCurrentMinute = nil
                 chartValues = series.plot.map(Self.doubleValue)
             }
+            let chartEstimateValues: [Double?]
+            if period == .day, let comparisonLabels = series.comparisonLabels,
+               let comparisonPlot = series.comparisonPlot {
+                chartEstimateValues = Self.hourlyTodayValues(
+                    labels: comparisonLabels,
+                    values: comparisonPlot,
+                    currentMinute: 1439
+                )
+            } else {
+                chartEstimateValues = []
+            }
             return PlauselyWidgetEntry(
                 date: now,
                 domain: site.domain,
@@ -284,6 +299,7 @@ private enum WidgetReportLoader {
                 destinationURL: WidgetSiteDestination(accountID: AccountID(rawValue: uuid), domain: site.domain).url,
                 metrics: metrics,
                 chartValues: chartValues,
+                chartEstimateValues: chartEstimateValues,
                 chartCurrentMinute: chartCurrentMinute,
                 error: metrics.isEmpty ? "No analytics for this period." : nil
             )
@@ -304,6 +320,7 @@ private enum WidgetReportLoader {
             },
             metrics: [],
             chartValues: [],
+            chartEstimateValues: [],
             chartCurrentMinute: nil,
             error: message
         )
@@ -437,7 +454,8 @@ struct PlauselyWidgetView: View {
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
             if !entry.chartValues.isEmpty {
-                WidgetSparkline(values: entry.chartValues, height: 40, chartCurrentMinute: entry.chartCurrentMinute)
+                WidgetSparkline(values: entry.chartValues, estimateValues: entry.chartEstimateValues,
+                                height: 40, chartCurrentMinute: entry.chartCurrentMinute)
             }
         }
         .frame(maxHeight: .infinity, alignment: .center)
@@ -461,6 +479,7 @@ struct PlauselyWidgetView: View {
         return VStack(alignment: .center, spacing: 5) {
             WidgetSparkline(
                 values: entry.chartValues,
+                estimateValues: entry.chartEstimateValues,
                 height: chartHeight,
                 chartCurrentMinute: entry.chartCurrentMinute
             )
@@ -487,8 +506,26 @@ struct PlauselyWidgetView: View {
 
 private struct WidgetSparkline: View {
     let values: [Double?]
+    let estimateValues: [Double?]
     let height: CGFloat
     let chartCurrentMinute: Double?
+
+    private var estimatePoints: [(minute: Double, value: Double)] {
+        guard let chartCurrentMinute, chartCurrentMinute < 1439 else { return [] }
+        let currentHour = Int(chartCurrentMinute) / 60
+        guard let anchorHour = values.indices.last(where: { $0 <= currentHour && values[$0] != nil }),
+              let anchorValue = values[anchorHour] else { return [] }
+        var points: [(minute: Double, value: Double)] = [
+            (Double(anchorHour * 60 + 30), anchorValue),
+            (chartCurrentMinute, anchorValue),
+        ]
+        guard currentHour < 23 else { return [] }
+        for hour in (currentHour + 1)..<24 {
+            guard estimateValues.indices.contains(hour), let value = estimateValues[hour] else { break }
+            points.append((Double(hour * 60 + 30), value))
+        }
+        return points.count > 2 ? points : []
+    }
 
     var body: some View {
         Chart {
@@ -503,6 +540,17 @@ private struct WidgetSparkline: View {
                         .foregroundStyle(.tint)
                         .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 }
+            }
+            ForEach(Array(estimatePoints.enumerated()), id: \.offset) { item in
+                let point = item.element
+                LineMark(
+                    x: .value("Estimated time", point.minute),
+                    y: .value("Estimated visitors", point.value),
+                    series: .value("Series", "Estimate")
+                )
+                .interpolationMethod(.catmullRom)
+                .foregroundStyle(.tint.opacity(0.8))
+                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [4, 4]))
             }
             if let chartCurrentMinute = chartCurrentMinute {
                 RuleMark(x: .value("Current time", chartCurrentMinute))

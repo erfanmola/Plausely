@@ -223,12 +223,14 @@ public struct SeriesChartView: View {
     private let formatter = MetricFormatter()
     private let points: [SeriesPoint]
     private let xPositions: [Double]
+    private let series: TimeSeries
 
     public init(series: TimeSeries, metric: MetricID, period: Period, periodDate: Date? = nil, timeZone: TimeZone) {
         self.metric = metric
         self.period = period
         self.periodDate = periodDate
         self.timeZone = timeZone
+        self.series = series
         let points = SeriesPoints.build(from: series)
         self.points = points
         self.xPositions = points.map { Self.xPosition(for: $0, period: period) }
@@ -278,7 +280,27 @@ public struct SeriesChartView: View {
     }
 
     private var dayYMaximum: Double {
-        max(1, (visiblePoints.compactMap(\.value).max() ?? 0) * 1.1)
+        let actualMaximum = visiblePoints.compactMap(\.value).max() ?? 0
+        let estimateMaximum = todayEstimatePoints.map(\.value).max() ?? 0
+        return max(1, max(actualMaximum, estimateMaximum) * 1.1)
+    }
+
+    private var todayEstimatePoints: [TodayEstimatePoint] {
+        isToday ? TodayEstimate.points(for: series, currentMinute: currentMinute) : []
+    }
+
+    @ChartContentBuilder
+    private var todayEstimateContent: some ChartContent {
+        ForEach(todayEstimatePoints) { point in
+            LineMark(
+                x: .value("Estimated time", point.minute),
+                y: .value("Estimated value", point.value),
+                series: .value("Series", "Estimate")
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(.blue.opacity(0.8))
+            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [4, 4]))
+        }
     }
 
     private var visiblePoints: [SeriesPoint] {
@@ -292,6 +314,27 @@ public struct SeriesChartView: View {
               xPosition(for: last) == 23 * 60, last.value != nil
         else { return nil }
         return last
+    }
+
+    @ChartContentBuilder
+    private var todayIndicatorContent: some ChartContent {
+        if isToday {
+            RectangleMark(
+                xStart: .value("Current hour start", Double(currentHour * 60)),
+                xEnd: .value("Current hour end", Double((currentHour + 1) * 60)),
+                yStart: .value("Baseline", 0),
+                yEnd: .value("Scale", dayYMaximum)
+            )
+            .foregroundStyle(.orange.opacity(0.08))
+            RuleMark(x: .value("Current time", currentMinute))
+                .foregroundStyle(.orange)
+                .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 3]))
+                .annotation(position: .top, alignment: .trailing) {
+                    Text("NOW")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.orange)
+                }
+        }
     }
 
     @ChartContentBuilder
@@ -343,23 +386,7 @@ public struct SeriesChartView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Chart {
-                if isToday {
-                    RectangleMark(
-                        xStart: .value("Current hour start", Double(currentHour * 60)),
-                        xEnd: .value("Current hour end", Double((currentHour + 1) * 60)),
-                        yStart: .value("Baseline", 0),
-                        yEnd: .value("Scale", dayYMaximum)
-                    )
-                    .foregroundStyle(.orange.opacity(0.08))
-                    RuleMark(x: .value("Current time", currentMinute))
-                        .foregroundStyle(.orange)
-                        .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 3]))
-                        .annotation(position: .top, alignment: .trailing) {
-                            Text("NOW")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.orange)
-                        }
-                }
+                todayIndicatorContent
                 ForEach(primaryRuns, id: \.firstIndex) { run in
                     ForEach(run.points, id: \.index) { point in
                         LineMark(
@@ -383,6 +410,7 @@ public struct SeriesChartView: View {
                         )
                     )
                 }
+                todayEstimateContent
                 finalHourlyChartContent
                 ForEach(comparisonRuns, id: \.firstIndex) { run in
                     ForEach(run.points, id: \.index) { point in
@@ -449,6 +477,12 @@ public struct SeriesChartView: View {
                 }
             ))
             .sensoryFeedback(.selection, trigger: selectedPoint?.index)
+            if !todayEstimatePoints.isEmpty {
+                Text("Dotted line estimates the rest of today from yesterday.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
             if let detail = selectionDetail {
                 Text(detail)
                     .font(.callout)
@@ -541,7 +575,7 @@ public struct SeriesChartView: View {
     }
 
     private var comparisonRuns: [PointRun] {
-        guard visiblePoints.contains(where: { $0.comparison != nil }) else { return [] }
+        guard !isToday, visiblePoints.contains(where: { $0.comparison != nil }) else { return [] }
         return runs(value: \.comparison, in: visiblePoints).map { PointRun(points: $0, kind: .comparison) }
     }
 

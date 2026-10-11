@@ -163,12 +163,15 @@ public final class OverviewModel {
     }
 
     private func seriesQuery(from query: DashboardQuery) -> DashboardQuery {
-        DashboardQuery(
+        let comparison: Comparison = query.period == .day && query.periodDate == nil && query.comparison == .off
+            ? .previousPeriod
+            : query.comparison
+        return DashboardQuery(
             accountID: query.accountID,
             siteID: query.siteID,
             period: query.period,
             periodDate: query.periodDate,
-            comparison: query.comparison,
+            comparison: comparison,
             matchDayOfWeek: query.matchDayOfWeek,
             filters: query.filters,
             includeImported: query.includeImported,
