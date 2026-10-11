@@ -162,6 +162,7 @@ public struct HomeRootView: View {
     @MainActor
     private func applyWidgetDestination() async {
         guard let destination = widgetDestination,
+              selection.booted,
               handledWidgetDestination != destination,
               await selection.openSite(accountID: destination.accountID, domain: destination.domain)
         else { return }

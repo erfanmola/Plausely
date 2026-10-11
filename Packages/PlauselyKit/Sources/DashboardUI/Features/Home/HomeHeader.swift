@@ -14,9 +14,6 @@ struct HomeHeaderPills: View {
                 HomePeriodPill(model: queryModel)
             }
         }
-        .task {
-            await selection.loadAccounts()
-        }
     }
 
     private var sitePill: some View {
@@ -61,7 +58,7 @@ struct HomeHeaderPills: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Text(selection.selectedSite?.domain ?? "Select a site")
+                Text(selection.selectedSite?.domain ?? selection.pendingSiteDomain ?? "Select a site")
                     .lineLimit(1)
                 #if os(macOS)
                 Image(systemName: "chevron.up.chevron.down")

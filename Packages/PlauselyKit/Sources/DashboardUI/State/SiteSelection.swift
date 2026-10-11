@@ -116,6 +116,8 @@ public final class SiteSelectionModel {
     public private(set) var sitesLoading = false
     public private(set) var sitesError: ReportLoadError?
     public var selectedDomain: String?
+    /// Widget target being resolved while the account's site directory loads.
+    public private(set) var pendingSiteDomain: String?
     /// The window's query, rebuilt from the default template on every site
     /// selection. Period/metric controls (04.3) edit a copy, never this.
     public private(set) var query: DashboardQuery?
@@ -222,6 +224,8 @@ public final class SiteSelectionModel {
     @discardableResult
     public func openSite(accountID: AccountID, domain: String) async -> Bool {
         guard accounts.contains(where: { $0.id == accountID }) else { return false }
+        pendingSiteDomain = domain
+        defer { pendingSiteDomain = nil }
         if selectedAccountID != accountID {
             selectedAccountID = accountID
             clearSiteSelection()

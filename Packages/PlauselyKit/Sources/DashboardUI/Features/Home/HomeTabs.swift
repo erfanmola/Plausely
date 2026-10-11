@@ -58,6 +58,10 @@ struct HomeOverviewTab: View {
                         FilterEditorView(model: queryModel)
                     }
                     Spacer(minLength: 90)
+                } else if let site = selection.selectedSite {
+                    siteLoadingView(site.domain)
+                } else if let domain = selection.pendingSiteDomain {
+                    siteLoadingView(domain)
                 } else {
                     // No site yet: the full picker beats an empty card.
                     SitePickerView(selection: selection, sparkline: sparkline)
@@ -74,6 +78,19 @@ struct HomeOverviewTab: View {
             }
         }
         .accessibilityIdentifier("home-pane-overview")
+    }
+
+    private func siteLoadingView(_ domain: String) -> some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Loading \(domain)…")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .frame(maxWidth: .infinity, minHeight: 220)
+        .accessibilityIdentifier("site-dashboard-loading")
     }
 }
 
