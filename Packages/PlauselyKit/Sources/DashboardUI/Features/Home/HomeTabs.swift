@@ -14,17 +14,21 @@ struct HomeOverviewTab: View {
             VStack(spacing: 8) {
                 HomeHeaderPills(selection: selection, queryModel: queryModel)
                 if !selection.booted {
-                    // First paint: shimmer for the directory + restore,
-                    // never a premature empty picker.
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Loading…")
-                            .font(.title2)
-                            .bold()
-                            .foregroundStyle(.secondary)
-                        SkeletonBlocks(rows: 8, rowHeight: 56)
+                    if let domain = selection.pendingSiteDomain {
+                        siteLoadingView(domain)
+                    } else {
+                        // First paint: shimmer for the directory + restore,
+                        // never a premature empty picker.
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Loading…")
+                                .font(.title2)
+                                .bold()
+                                .foregroundStyle(.secondary)
+                            SkeletonBlocks(rows: 8, rowHeight: 56)
+                        }
+                        .accessibilityIdentifier("home-boot")
+                        .padding(.top, 8)
                     }
-                    .accessibilityIdentifier("home-boot")
-                    .padding(.top, 8)
                 } else if let queryModel {
                     HomeHeroView(model: realtimeModel)
                     // Reports need a runnable effective query; controls

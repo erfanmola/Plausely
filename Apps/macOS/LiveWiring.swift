@@ -506,7 +506,7 @@ struct LiveRootView: View {
     var body: some View {
         Group {
             if !accountsLoaded {
-                ProgressView("Loading instances…")
+                ProgressView(widgetDestination.map { "Loading \($0.domain)…" } ?? "Loading instances…")
                     .accessibilityIdentifier("live-loading")
             } else if accounts.isEmpty {
                 NavigationStack {

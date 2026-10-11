@@ -56,6 +56,7 @@ public struct HomeRootView: View {
     private let onWidgetDestinationHandled: () -> Void
     @State private var generation: UInt64 = 0
     @State private var handledWidgetDestination: WidgetSiteDestination?
+    @State private var applyingWidgetDestination: WidgetSiteDestination?
 
     public init(
         directory: any SiteDirectory,
@@ -147,14 +148,22 @@ public struct HomeRootView: View {
             await refreshTodayAtSiteMidnight(queryModel?.effective)
         }
         .task {
+            if let widgetDestination {
+                selection.prepareWidgetDestination(domain: widgetDestination.domain)
+            }
             await selection.loadAccounts()
             await applyWidgetDestination()
         }
         .onChange(of: widgetDestination) { _, destination in
-            guard destination != nil else {
+            guard let destination else {
                 handledWidgetDestination = nil
                 return
             }
+            selection.prepareWidgetDestination(domain: destination.domain)
+            Task { await applyWidgetDestination() }
+        }
+        .onChange(of: selection.booted) { _, booted in
+            guard booted else { return }
             Task { await applyWidgetDestination() }
         }
     }
@@ -162,10 +171,15 @@ public struct HomeRootView: View {
     @MainActor
     private func applyWidgetDestination() async {
         guard let destination = widgetDestination,
-              selection.booted,
               handledWidgetDestination != destination,
-              await selection.openSite(accountID: destination.accountID, domain: destination.domain)
+              applyingWidgetDestination != destination
         else { return }
+        selection.prepareWidgetDestination(domain: destination.domain)
+        guard selection.booted else { return }
+        applyingWidgetDestination = destination
+        let opened = await selection.openSite(accountID: destination.accountID, domain: destination.domain)
+        applyingWidgetDestination = nil
+        guard opened else { return }
         handledWidgetDestination = destination
         selectedTab = .overview
         onWidgetDestinationHandled()

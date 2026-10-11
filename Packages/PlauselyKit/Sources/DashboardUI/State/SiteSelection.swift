@@ -219,13 +219,18 @@ public final class SiteSelectionModel {
         }
     }
 
+    /// Shows the destination while initial account and site discovery runs.
+    public func prepareWidgetDestination(domain: String) {
+        pendingSiteDomain = domain
+    }
+
     /// Selects the exact site encoded by a widget tap after account/site
     /// discovery has completed. Returns false if the identity is stale.
     @discardableResult
     public func openSite(accountID: AccountID, domain: String) async -> Bool {
-        guard accounts.contains(where: { $0.id == accountID }) else { return false }
         pendingSiteDomain = domain
         defer { pendingSiteDomain = nil }
+        guard accounts.contains(where: { $0.id == accountID }) else { return false }
         if selectedAccountID != accountID {
             selectedAccountID = accountID
             clearSiteSelection()
