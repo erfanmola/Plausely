@@ -514,7 +514,10 @@ private struct WidgetSparkline: View {
         guard let chartCurrentMinute, chartCurrentMinute < 1439 else { return [] }
         let currentHour = Int(chartCurrentMinute) / 60
         guard let anchorHour = values.indices.last(where: { $0 <= currentHour && values[$0] != nil }),
-              let anchorValue = values[anchorHour] else { return [] }
+              let anchorValue = values[anchorHour],
+              estimateValues.indices.contains(currentHour),
+              let comparisonAnchor = estimateValues[currentHour] else { return [] }
+        let offset = anchorValue - comparisonAnchor
         var points: [(minute: Double, value: Double)] = [
             (Double(anchorHour * 60 + 30), anchorValue),
             (chartCurrentMinute, anchorValue),
@@ -522,7 +525,7 @@ private struct WidgetSparkline: View {
         guard currentHour < 23 else { return [] }
         for hour in (currentHour + 1)..<24 {
             guard estimateValues.indices.contains(hour), let value = estimateValues[hour] else { break }
-            points.append((Double(hour * 60 + 30), value))
+            points.append((Double(hour * 60 + 30), value + offset))
         }
         return points.count > 2 ? points : []
     }

@@ -29,16 +29,17 @@ public enum TodayEstimate {
         }
         guard let anchor = actual.last else { return [] }
 
-        var previous: [(minute: Double, value: Double?)] = zip(comparisonLabels, comparisonPlot).compactMap { label, rawValue in
-            guard let minute = minuteOfDay(label), minute > currentMinute else { return nil }
+        let comparison: [(minute: Double, value: Double?)] = zip(comparisonLabels, comparisonPlot).compactMap { label, rawValue in
+            guard let minute = minuteOfDay(label) else { return nil }
             return (minute, rawValue.flatMap(doubleValue))
-        }
-        previous.sort { $0.minute < $1.minute }
+        }.sorted { $0.minute < $1.minute }
+        guard let comparisonAnchor = comparison.last(where: { $0.minute <= anchor.minute })?.value else { return [] }
+        let offset = anchor.value - comparisonAnchor
 
         var future: [(minute: Double, value: Double)] = []
-        for point in previous {
+        for point in comparison where point.minute > currentMinute {
             guard let value = point.value else { break }
-            future.append((point.minute, value))
+            future.append((point.minute, value + offset))
         }
         guard !future.isEmpty else { return [] }
 
