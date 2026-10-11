@@ -110,24 +110,36 @@ public struct AccountStore: Sendable {
     }
 
     public static func production() throws -> AccountStore {
+        let localDirectory = try? FileManager.default.url(
+            for: .applicationSupportDirectory, in: .userDomainMask,
+            appropriateFor: nil, create: true
+        ).appending(path: "Plausely", directoryHint: .isDirectory)
+
         if let shared = PlauselySharedContainer.directory {
             let sharedDirectory = shared.appending(path: "Accounts", directoryHint: .isDirectory)
-            let legacyBase = try FileManager.default.url(
-                for: .applicationSupportDirectory, in: .userDomainMask,
-                appropriateFor: nil, create: true
-            ).appending(path: "Plausely", directoryHint: .isDirectory)
-            // Preserve accounts created before the widget app group existed.
-            try FileManager.default.createDirectory(at: sharedDirectory, withIntermediateDirectories: true)
-            if let oldFiles = try? FileManager.default.contentsOfDirectory(at: legacyBase, includingPropertiesForKeys: nil) {
-                for oldFile in oldFiles where oldFile.pathExtension == "json" {
-                    let newFile = sharedDirectory.appending(path: oldFile.lastPathComponent)
-                    if !FileManager.default.fileExists(atPath: newFile.path) {
-                        try? FileManager.default.copyItem(at: oldFile, to: newFile)
+            do {
+                // The app group is preferred so the widgets can read accounts.
+                // macOS may expose the group URL while denying writes (for
+                // example, when the local signing profile lacks that group).
+                // Keep the app usable by falling back to its private support
+                // directory instead of making all account storage unavailable.
+                try FileManager.default.createDirectory(at: sharedDirectory, withIntermediateDirectories: true)
+                if let localDirectory,
+                   let oldFiles = try? FileManager.default.contentsOfDirectory(at: localDirectory, includingPropertiesForKeys: nil) {
+                    for oldFile in oldFiles where oldFile.pathExtension == "json" {
+                        let newFile = sharedDirectory.appending(path: oldFile.lastPathComponent)
+                        if !FileManager.default.fileExists(atPath: newFile.path) {
+                            try? FileManager.default.copyItem(at: oldFile, to: newFile)
+                        }
                     }
                 }
+                return AccountStore(directory: sharedDirectory)
+            } catch {
+                if let localDirectory { return AccountStore(directory: localDirectory) }
+                throw error
             }
-            return AccountStore(directory: sharedDirectory)
         }
+        if let localDirectory { return AccountStore(directory: localDirectory) }
         let base = try FileManager.default.url(
             for: .applicationSupportDirectory, in: .userDomainMask,
             appropriateFor: nil, create: true
