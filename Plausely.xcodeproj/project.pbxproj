@@ -13,6 +13,7 @@
 		A1B2C3D4E5F60044 /* PlauselyCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60013 /* PlauselyCommands.swift */; };
 		A1B2C3D4E5F60046 /* DashboardUI in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60018 /* DashboardUI */; };
 		A1B2C3D4E5F6006D /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60060 /* SmokeTests.swift */; };
+		A1B2C3D4E5F60080 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60081 /* ScreenshotTests.swift */; };
 		A1B2C3D4E5F6006E /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60062 /* SmokeTests.swift */; };
 		B1B2C3D4E5F60080 /* LiveWiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60082 /* LiveWiring.swift */; };
 		B1B2C3D4E5F60081 /* LiveWiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B2C3D4E5F60083 /* LiveWiring.swift */; };
@@ -61,6 +62,7 @@
 		A1B2C3D4E5F60015 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60016 /* Plausely.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plausely.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60060 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60081 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60061 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1B2C3D4E5F60062 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60063 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -180,6 +182,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60060 /* SmokeTests.swift */,
+				A1B2C3D4E5F60081 /* ScreenshotTests.swift */,
 				A1B2C3D4E5F60061 /* Info.plist */,
 			);
 			path = PlauselyiOSUITests;
@@ -361,6 +364,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6006D /* SmokeTests.swift in Sources */,
+				A1B2C3D4E5F60080 /* ScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
