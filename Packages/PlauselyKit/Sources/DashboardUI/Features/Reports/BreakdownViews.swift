@@ -579,8 +579,10 @@ public struct CountryDistributionView: View {
     }
 }
 
-/// Row glyph: the dashboard flag emoji for geo rows, the family symbol
-/// otherwise. Decorative; always hidden from VoiceOver.
+/// Row glyph: the dashboard flag emoji for geo rows, a remote favicon for
+/// host rows (sources + referrer URLs via DuckDuckGo's privacy-friendly
+/// icon proxy, AsyncImage-cached, family symbol while loading/on error),
+/// the family symbol otherwise. Decorative; always hidden from VoiceOver.
 struct RowGlyph: View {
     let definition: ReportDefinition
     let row: BreakdownRow
@@ -590,14 +592,20 @@ struct RowGlyph: View {
             if let flag = row.flag {
                 Text(flag)
             } else {
-                Image(systemName: reportSymbolName(for: definition.kind))
-                    .foregroundStyle(.secondary)
+                switch BreakdownIconResolver.icon(for: row, kind: definition.kind) {
+                case .favicon(let host):
+                    CachedFaviconImage(host: host, fallback: reportSymbolName(for: definition.kind))
+                case .system(let name):
+                    Image(systemName: name)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
-        .frame(width: 24, alignment: .center)
+        .frame(width: 24, height: 24, alignment: .center)
         .accessibilityHidden(true)
     }
 }
+
 
 /// Compact embed: top rows plus a Show-all link. Drives the shared model from
 /// the effective query; the full report destination reuses the same model.

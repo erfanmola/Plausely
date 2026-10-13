@@ -1,14 +1,54 @@
 #!/bin/sh
 # Ordinary reproducible checks for Plausely (task 01.2).
 # Run from the repository root: ./scripts/check.sh
-# macOS builds/tests are ad-hoc signed (CODE_SIGN_IDENTITY=-) so Gatekeeper
-# never prompts for the locally built app or UI-test runner; iOS simulator
-# steps stay unsigned (the simulator does not enforce signatures).
-# Distribution signing is a separate phase-10 concern.
+# macOS steps use the project's automatic development signing: the app and
+# widget share Keychain/app-group entitlements, which ad-hoc signing cannot
+# satisfy. iOS simulator steps stay unsigned (the simulator does not enforce
+# signatures). Distribution signing is a separate phase-10 concern.
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+SIM_NAME="iPhone 17"
+
+# Simulator devices are machine-local state: a fresh checkout has runtimes
+# but no devices, so the iOS steps would fail with "unable to find a
+# device". Heal that here: reuse an available "$SIM_NAME" when present,
+# else create one from the newest iOS runtime (preferring the iPhone 17
+# profile, falling back to 16 Pro where the installed runtime predates
+# the 17 hardware).
+ensure_simulator() {
+  if xcrun simctl list devices -j | python3 -c '
+import json, sys
+for devices in json.load(sys.stdin).get("devices", {}).values():
+    for d in devices:
+        if d.get("name") == "iPhone 17" and d.get("isAvailable", False):
+            sys.exit(0)
+sys.exit(1)
+'; then
+    return 0
+  fi
+  echo "-- creating '$SIM_NAME' simulator --"
+  runtime="$(xcrun simctl list runtimes -j | python3 -c '
+import json, sys
+candidates = [r for r in json.load(sys.stdin).get("runtimes", [])
+              if r.get("name", "").startswith("iOS") and r.get("isAvailable", False)]
+candidates.sort(key=lambda r: [int(p) for p in str(r.get("version", "0")).split(".")])
+print(candidates[-1]["identifier"])
+')"
+  for type in iPhone-17 iPhone-16-Pro; do
+    id="com.apple.CoreSimulator.SimDeviceType.$type"
+    if udid="$(xcrun simctl create "$SIM_NAME" "$id" "$runtime" 2>/dev/null)"; then
+      echo "-- simulator ready: $SIM_NAME ($type) $udid --"
+      return 0
+    fi
+  done
+  echo "error: could not create an iPhone simulator" >&2
+  return 1
+}
+
+ensure_simulator
 
 echo "== package tests =="
 swift test --package-path Packages/PlauselyKit
@@ -16,7 +56,7 @@ swift test --package-path Packages/PlauselyKit
 echo "== macOS Debug build =="
 xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS \
   -configuration Debug -destination 'platform=macOS' \
-  CODE_SIGN_IDENTITY=- build
+  build
 
 echo "== iOS simulator Debug build (iPhone 17) =="
 xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS \
@@ -24,8 +64,14 @@ xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS \
   CODE_SIGNING_ALLOWED=NO build
 
 echo "== macOS UI smoke test =="
-xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS \
-  -destination 'platform=macOS' CODE_SIGN_IDENTITY=- test
+# The macOS suite drives the real screen and steals focus, so it never
+# runs unattended: opt in with PLAUSLEY_MAC_UI=1 (CI sets it).
+if [ "${PLAUSLEY_MAC_UI:-0}" = "1" ]; then
+  xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS \
+    -destination 'platform=macOS' test
+else
+  echo "-- skipped (set PLAUSLEY_MAC_UI=1 to run; it takes over the screen) --"
+fi
 
 echo "== iOS simulator UI smoke test (iPhone 17) =="
 # Simulator launches flake occasionally ("Busy" preflight); retry once.
@@ -41,7 +87,7 @@ fi
 echo "== macOS Release build =="
 xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS \
   -configuration Release -destination 'platform=macOS' \
-  CODE_SIGN_IDENTITY=- build
+  build
 
 echo "== iOS simulator Release build (generic) =="
 xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS \

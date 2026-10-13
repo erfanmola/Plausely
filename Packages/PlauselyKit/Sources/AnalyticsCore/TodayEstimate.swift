@@ -39,7 +39,11 @@ public enum TodayEstimate {
         var future: [(minute: Double, value: Double)] = []
         for point in comparison where point.minute > currentMinute {
             guard let value = point.value else { break }
-            future.append((point.minute, value + offset))
+            // A quiet today against a loud yesterday yields a negative
+            // offset; shifted small future buckets would dive below zero
+            // (radar: dotted estimate under the axis). Visitors floor at
+            // zero — clamp, never invent negatives.
+            future.append((point.minute, max(0, value + offset)))
         }
         guard !future.isEmpty else { return [] }
 

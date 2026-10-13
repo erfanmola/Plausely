@@ -35,10 +35,11 @@ the browser, linked where appropriate.
 ./scripts/check.sh
 ```
 
-That single script runs the package tests, both Debug builds, both UI
-suites, and both Release builds. macOS builds are ad-hoc signed so
-Gatekeeper never prompts; distribution signing is a release concern, not a
-build concern.
+That single script runs the package tests, both Debug builds, the iOS
+simulator UI suite, and both Release builds. The macOS UI suite is
+opt-in (`PLAUSLEY_MAC_UI=1`) because it drives the real screen. macOS steps use the project's automatic
+development signing (the app/widget entitlements require it);
+distribution signing is a release concern, not a build concern.
 
 ## Layout
 

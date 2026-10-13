@@ -525,9 +525,20 @@ private struct WidgetSparkline: View {
         guard currentHour < 23 else { return [] }
         for hour in (currentHour + 1)..<24 {
             guard estimateValues.indices.contains(hour), let value = estimateValues[hour] else { break }
-            points.append((Double(hour * 60 + 30), value + offset))
+            // Same floor as TodayEstimate: a negative offset must never
+            // push the dotted continuation below zero.
+            points.append((Double(hour * 60 + 30), max(0, value + offset)))
         }
         return points.count > 2 ? points : []
+    }
+
+    /// Explicit 0-based domain with 10% headroom, mirroring the in-app
+    /// series chart. `.automatic(includesZero:)` scaled widgets and app
+    /// differently for identical data; one formula keeps both consistent.
+    private var yMaximum: Double {
+        let actual = values.compactMap { $0 }.max() ?? 0
+        let estimate = estimatePoints.map { $0.value }.max() ?? 0
+        return max(1, max(actual, estimate) * 1.1)
     }
 
     var body: some View {
@@ -565,7 +576,7 @@ private struct WidgetSparkline: View {
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .chartXScale(domain: chartCurrentMinute == nil ? 0...Double(max(values.count - 1, 1)) : 0...1439)
-        .chartYScale(domain: .automatic(includesZero: true))
+        .chartYScale(domain: 0...yMaximum)
         .frame(height: height)
         .accessibilityHidden(true)
     }
