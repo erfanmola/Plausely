@@ -7,7 +7,7 @@
 	<key>CFBundleDisplayName</key>
 	<string>Plausely Widgets</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.2.0</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleName</key>
@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>PlauselyKeychainAccessGroup</key>
 	<string>$(AppIdentifierPrefix)ir.developex.Plausely</string>
 	<key>NSExtension</key>
