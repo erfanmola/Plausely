@@ -385,7 +385,16 @@ public struct SeriesChartView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Chart {
+            if visiblePoints.allSatisfy({ $0.value == nil }) {
+                ContentUnavailableView(
+                    "No data for this period",
+                    systemImage: "chart.line.downtrend.xyaxis",
+                    description: Text("Values appear here once the site collects matching traffic.")
+                )
+                .frame(minHeight: 150)
+                .accessibilityIdentifier("series-empty")
+            } else {
+                Chart {
                 todayIndicatorContent
                 ForEach(primaryRuns, id: \.firstIndex) { run in
                     ForEach(run.points, id: \.index) { point in
@@ -477,6 +486,7 @@ public struct SeriesChartView: View {
                 }
             ))
             .sensoryFeedback(.selection, trigger: selectedPoint?.index)
+            }
             if !todayEstimatePoints.isEmpty {
                 Text("Dotted line estimates the rest of today from yesterday.")
                     .font(.caption2)

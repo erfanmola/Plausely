@@ -24,7 +24,7 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
         Group {
             switch state {
             case .idle:
-                Text("Not loaded")
+                ProgressView()
                     .accessibilityIdentifier("report-idle")
             case .loading(let stale):
                 VStack {
@@ -53,14 +53,24 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
                         staleBadge
                         content(stale)
                     }
-                    Text(error.message)
-                        .accessibilityIdentifier("report-error")
-                    Button("Retry", action: onRetry)
-                        .accessibilityIdentifier("report-retry")
+                    ContentUnavailableView {
+                        Label(error.message, systemImage: "exclamationmark.triangle")
+                            .accessibilityIdentifier("report-error")
+                    } description: {
+                        Text("Check the connection and try again.")
+                    } actions: {
+                        Button("Retry", action: onRetry)
+                            .accessibilityIdentifier("report-retry")
+                            .buttonStyle(.borderedProminent)
+                    }
                 }
             case .unsupported(let reason):
-                Text(reason)
-                    .accessibilityIdentifier("report-unsupported")
+                ContentUnavailableView(
+                    "Not available",
+                    systemImage: "eye.slash",
+                    description: Text(reason)
+                )
+                .accessibilityIdentifier("report-unsupported")
             }
         }
     }

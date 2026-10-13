@@ -691,12 +691,23 @@ public struct BreakdownSummaryView: View {
                 SkeletonBlocks(rows: 5, rowHeight: 22)
                     .accessibilityIdentifier("\(prefix)-summary-loading")
             case .failed where model.rows.isEmpty:
-                Text("Couldn't load \(model.definition.title.lowercased()).")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("\(prefix)-summary-error")
+                ContentUnavailableView {
+                    Label("Couldn't load \(model.definition.title.lowercased()).", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("Check the connection and open the full report to retry.")
+                }
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier("\(prefix)-summary-error")
             default:
-                ForEach(Array(model.rows.prefix(previewCount).enumerated()), id: \.offset) { index, row in
-                    // Full-width proportional bar (dashboard style): width
+                if model.rows.isEmpty {
+                    ContentUnavailableView(
+                        "No data for this period",
+                        systemImage: "chart.bar.xaxis",
+                        description: Text("Values appear here once the site collects matching traffic.")
+                    )
+                    .accessibilityIdentifier("\(prefix)-summary-empty")
+                } else {
+                    ForEach(Array(model.rows.prefix(previewCount).enumerated()), id: \.offset) { index, row in                    // Full-width proportional bar (dashboard style): width
                     // encodes share of the top row, name rides inside,
                     // exact value stays right-aligned text.
                     let fraction = barFraction(row, ceiling: maxPrimaryValue)
@@ -732,14 +743,17 @@ public struct BreakdownSummaryView: View {
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("\(prefix)-summary-\(index)")
                 }
-                Button("Show all \(model.definition.title.lowercased())") { showingFull = true }
-                    .accessibilityIdentifier("\(prefix)-show-all")
-                    .sheet(isPresented: $showingFull) {
-                        BreakdownSheetHost(
-                            model: model, childFactory: childFactory, onFilter: onFilter,
-                            onCloseSheet: { showingFull = false }
-                        )
-                    }
+                if !model.rows.isEmpty {
+                    Button("Show all \(model.definition.title.lowercased())") { showingFull = true }
+                        .accessibilityIdentifier("\(prefix)-show-all")
+                        .sheet(isPresented: $showingFull) {
+                            BreakdownSheetHost(
+                                model: model, childFactory: childFactory, onFilter: onFilter,
+                                onCloseSheet: { showingFull = false }
+                            )
+                        }
+                }
+                }
             }
         }
         .task(id: isActive ? query : nil) {

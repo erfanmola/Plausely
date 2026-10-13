@@ -134,7 +134,7 @@ public struct SegmentListView: View {
                     .accessibilityIdentifier("segments-loading")
             case .loaded(let segments):
                 if segments.isEmpty {
-                    Text("No saved segments")
+                    Label("No saved segments", systemImage: "bookmark")
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("segments-empty")
                 }

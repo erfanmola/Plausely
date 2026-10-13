@@ -118,6 +118,16 @@ struct HomeBreakdownsTab: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                if queryModel == nil {
+                    HomeCard {
+                        ContentUnavailableView(
+                            "No site selected",
+                            systemImage: "chart.bar.doc.horizontal",
+                            description: Text("Choose a site to see channels, sources, pages, geography, and devices.")
+                        )
+                        .accessibilityIdentifier("home-breakdowns-empty")
+                    }
+                }
                 familyCard(title: "Top channels", model: channelsModel, kind: .channels)
                 familyCard(title: "Top sources", model: sourcesModel, kind: .sources)
                 familyCard(title: "Top pages", model: pagesModel, kind: .pages)
@@ -214,8 +224,12 @@ struct HomeGoalsTab: View {
                 }
                 if goalsModel == nil {
                     HomeCard {
-                        Text("Select a site to inspect it.")
-                            .foregroundStyle(.secondary)
+                        ContentUnavailableView(
+                            "No site selected",
+                            systemImage: "target",
+                            description: Text("Choose a site to inspect goal conversions and properties.")
+                        )
+                        .accessibilityIdentifier("home-goals-empty")
                     }
                 }
                 Spacer(minLength: 90)
@@ -242,9 +256,12 @@ struct HomeSettingsTab: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HomeCardTitle(title: "Instances")
                         if selection.accounts.isEmpty {
-                            Text("No instances configured.")
-                                .foregroundStyle(.secondary)
-                                .accessibilityIdentifier("settings-no-instances")
+                            ContentUnavailableView(
+                                "No instances configured",
+                                systemImage: "server.rack",
+                                description: Text("Sign in to an analytics instance to browse its sites.")
+                            )
+                            .accessibilityIdentifier("settings-no-instances")
                         } else {
                             ForEach(selection.accounts, id: \.id) { account in
                                 HStack {
@@ -256,7 +273,7 @@ struct HomeSettingsTab: View {
                                     }
                                     Spacer(minLength: 8)
                                     if onSignOut != nil {
-                                        Button("Sign Out") {
+                                        Button("Sign Out", role: .destructive) {
                                             Task { try? await onSignOut?(account) }
                                         }
                                         .accessibilityIdentifier("home-signout")
@@ -272,6 +289,11 @@ struct HomeSettingsTab: View {
                         HomeCardTitle(title: "About")
                         LabeledContent("Client", value: "Plausely")
                         LabeledContent("Dashboard target", value: "CE 3.2.1")
+                        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+                           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+                        {
+                            LabeledContent("Version", value: "\(version) (\(build))")
+                        }
                     }
                 }
                 .accessibilityIdentifier("settings-content")

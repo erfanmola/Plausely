@@ -186,9 +186,21 @@ struct SitePickerView: View {
                     .accessibilityIdentifier("site-picker-retry")
                 }
             } else if visiblePinned.isEmpty, visibleSections.isEmpty {
-                Text(selection.accounts.isEmpty ? "No instances configured." : "No sites match.")
-                    .foregroundStyle(.secondary)
+                if selection.accounts.isEmpty {
+                    ContentUnavailableView(
+                        "No instances configured",
+                        systemImage: "server.rack",
+                        description: Text("Sign in to an analytics instance to browse its sites.")
+                    )
                     .accessibilityIdentifier("site-picker-empty")
+                } else {
+                    ContentUnavailableView(
+                        "No sites match",
+                        systemImage: "magnifyingglass",
+                        description: Text("Try a different filter.")
+                    )
+                    .accessibilityIdentifier("site-picker-empty")
+                }
             } else {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     if !visiblePinned.isEmpty {
