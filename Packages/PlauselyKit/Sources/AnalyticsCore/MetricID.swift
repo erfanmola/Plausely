@@ -20,6 +20,9 @@ public enum MetricID: String, Hashable, Codable, Sendable, CaseIterable {
     case exits
     case exitRate = "exit_rate"
     case samplePercent = "sample_percent"
+    case impressions
+    case ctr
+    case position
 
     public struct Descriptor: Equatable, Sendable {
         /// Display name shown in metric pickers (sentence case, no values).
@@ -74,6 +77,12 @@ public enum MetricID: String, Hashable, Codable, Sendable, CaseIterable {
             return Descriptor(displayName: "Exit rate", unit: .percent, additive: false)
         case .samplePercent:
             return Descriptor(displayName: "Sample", unit: .percent, additive: false)
+        case .impressions:
+            return Descriptor(displayName: "Impressions", unit: .count, additive: true)
+        case .ctr:
+            return Descriptor(displayName: "CTR", unit: .percent, additive: false)
+        case .position:
+            return Descriptor(displayName: "Position", unit: .ratio, additive: false)
         }
     }
 }

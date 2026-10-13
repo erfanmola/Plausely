@@ -65,6 +65,8 @@ public enum BreakdownIconResolver {
             return .system("slider.horizontal.3")
         case .suggestions:
             return .system("magnifyingglass")
+        case .searchTerms:
+            return .system("magnifyingglass")
         }
     }
 

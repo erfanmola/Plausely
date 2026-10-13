@@ -118,6 +118,8 @@ public enum MockBreakdownProviders {
             return conversionRows()
         case .customPropValues:
             return propValueRows()
+        case .searchTerms:
+            return searchTermRows()
         default:
             return dataset()
         }
@@ -342,6 +344,29 @@ public enum MockBreakdownProviders {
                     .visitors: .count(entry.visitors),
                     .events: .count(entry.events),
                     .percentage: .decimal(Decimal(entry.visitors) / Decimal(1400) * Decimal(100)),
+                ]
+            )
+        }
+    }
+
+    private static func searchTermRows() -> [BreakdownRow] {
+        // Live-shaped GSC rows: visitors plus position/CTR/impressions,
+        // no engagement or share columns (verified against CE 3.2.1).
+        let terms: [(name: String, visitors: Int64, impressions: Int64, ctr: String, position: String)] = [
+            ("compass online", 100, 1463, "6.8", "3.8"),
+            ("qibla direction", 66, 408, "16.2", "4.8"),
+            ("online compass", 26, 348, "7.5", "8.4"),
+            ("prayer direction finder", 21, 83, "25.3", "18.7"),
+            ("north finder", 19, 430, "4.4", "7.0"),
+        ]
+        return terms.map { entry in
+            BreakdownRow(
+                name: entry.name,
+                metrics: [
+                    .visitors: .count(entry.visitors),
+                    .impressions: .count(entry.impressions),
+                    .ctr: .decimal(Decimal(string: entry.ctr)!),
+                    .position: .decimal(Decimal(string: entry.position)!),
                 ]
             )
         }

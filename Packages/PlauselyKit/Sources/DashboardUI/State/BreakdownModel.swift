@@ -93,6 +93,9 @@ public struct ReportDefinition: Sendable {
     /// URLs (live-proven for referrer-backed and campaign sources; the
     /// degenerate Direct row answers itself; "Google" hits the parked
     /// GSC branch and surfaces its typed error honestly).
+    /// The Google row instead opens Search terms: CE serves Google search
+    /// queries (with GSC position/CTR/impressions when connected) through
+    /// the `referrers/Google` route, mirroring the dashboard.
     public static var sources: ReportDefinition {
         ReportDefinition(
             kind: .sources,
@@ -100,8 +103,23 @@ public struct ReportDefinition: Sendable {
             columns: [.visitors, .bounceRate, .visitDuration, .percentage],
             filterDimension: .source,
             drilldown: { row in
-                DrillTarget(kind: .referrerDrilldown(referrer: row.name), title: row.name)
+                if row.name.trimmingCharacters(in: .whitespacesAndNewlines) == "Google" {
+                    return DrillTarget(kind: .searchTerms, title: "Search terms")
+                }
+                return DrillTarget(kind: .referrerDrilldown(referrer: row.name), title: row.name)
             }
+        )
+    }
+
+    /// ACQ-02b: Google search terms (GSC-backed when the site connects
+    /// Search Console; plain visitor counts otherwise). Live-shaped columns
+    /// are visitors plus GSC position/CTR/impressions; the server sends no
+    /// engagement or share columns here. Leaf rows: terms are not URLs and
+    /// carry no filter dimension.
+    public static var searchTerms: ReportDefinition {
+        ReportDefinition(
+            kind: .searchTerms, title: "Search terms",
+            columns: [.visitors, .impressions, .ctr, .position]
         )
     }
 
@@ -367,6 +385,7 @@ public struct ReportDefinition: Sendable {
     /// their parents, so no two drilldown reports ever match together.
     public var idPrefix: String {
         if case .referrerDrilldown = kind { return "breakdown-referrers-drilldown" }
+        if case .searchTerms = kind { return "breakdown-search-terms" }
         return "breakdown-\(kind.path().replacingOccurrences(of: "/", with: "-"))"
     }
 }
@@ -385,6 +404,8 @@ public func breakdownDefinition(for kind: ReportKind, title: String? = nil) -> R
         )
     case .channels:
         return .channels
+    case .searchTerms:
+        return .searchTerms
     case .referrerDrilldown(let name):
         return .referrerDrilldown(name: name)
     case .utmMediums:

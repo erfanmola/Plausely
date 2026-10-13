@@ -485,4 +485,22 @@ struct AdapterTests {
         _ = try await open.overview(testQuery(), today: Date())
         #expect(capture2.request?.value(forHTTPHeaderField: "Cookie") == nil)
     }
+
+    @Test("search terms decode GSC columns through the Google route")
+    func searchTerms() async throws {
+        let service = testStack { _ in try fixtureData("search-terms.day") }
+        let envelope = try await service.breakdown(
+            BreakdownRequest(query: testQuery(), kind: .searchTerms, pagination: .default, detailed: true),
+            today: Date()
+        )
+        #expect(ReportKind.searchTerms.path() == "referrers/Google")
+        let first = try #require(envelope.value.rows.first)
+        #expect(first.name == "compass online")
+        #expect(first.metrics[.visitors] == .count(100))
+        #expect(first.metrics[.impressions] == .count(1463))
+        #expect(first.metrics[.ctr] == .decimal(Decimal(string: "6.8")!))
+        #expect(first.metrics[.position] == .decimal(Decimal(string: "3.8")!))
+        #expect(first.metrics[.bounceRate] == nil)
+        #expect(envelope.value.rows.count == 3)
+    }
 }

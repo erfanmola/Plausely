@@ -22,6 +22,9 @@ func metricSymbolName(for metric: MetricID) -> String {
     case .exits: return "arrow.left.to.line"
     case .exitRate: return "chart.pie"
     case .samplePercent: return "percent"
+    case .impressions: return "eye.fill"
+    case .ctr: return "percent"
+    case .position: return "list.number"
     }
 }
 
@@ -46,6 +49,7 @@ func reportSymbolName(for kind: ReportKind) -> String {
     case .conversions: return "flag.checkered"
     case .customPropValues: return "slider.horizontal.3"
     case .suggestions: return "magnifyingglass"
+    case .searchTerms: return "magnifyingglass"
     }
 }
 

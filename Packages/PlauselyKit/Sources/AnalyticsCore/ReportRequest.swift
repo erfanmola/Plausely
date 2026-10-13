@@ -6,6 +6,7 @@ import Foundation
 public enum ReportKind: Hashable, Sendable {
     case sources
     case channels
+    case searchTerms
     case utmMediums
     case utmSources
     case utmCampaigns
@@ -34,6 +35,7 @@ public enum ReportKind: Hashable, Sendable {
         switch self {
         case .sources: return "sources"
         case .channels: return "channels"
+        case .searchTerms: return "referrers/Google"
         case .utmMediums: return "utm_mediums"
         case .utmSources: return "utm_sources"
         case .utmCampaigns: return "utm_campaigns"

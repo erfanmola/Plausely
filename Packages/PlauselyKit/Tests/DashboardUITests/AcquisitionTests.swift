@@ -19,6 +19,12 @@ struct AcquisitionTests {
         #expect(target?.filter == FilterClause(dimension: .channel, op: .is_, values: [.text("Organic Search")]))
 
         let sources = ReportDefinition.sources
+        // The Google row opens Search terms (GSC route); every other
+        // source drills to its referring URLs.
+        let google = sources.drilldown(row("Google"))
+        #expect(google?.kind == .searchTerms)
+        #expect(google?.title == "Search terms")
+        #expect(google?.filter == nil)
         let drill = sources.drilldown(row("chatgpt.com"))
         #expect(drill?.kind == .referrerDrilldown(referrer: "chatgpt.com"))
         #expect(drill?.title == "chatgpt.com")
@@ -77,7 +83,7 @@ struct AcquisitionTests {
         let child = breakdownDefinition(for: .sources, title: "Sources · Email")
         #expect(child.title == "Sources · Email")
         #expect(child.columns == ReportDefinition.sources.columns)
-        #expect(child.drilldown(BreakdownRow(name: "Google", metrics: [.visitors: .count(1)]))?.kind == .referrerDrilldown(referrer: "Google"))
+        #expect(child.drilldown(BreakdownRow(name: "Google", metrics: [.visitors: .count(1)]))?.kind == .searchTerms)
         #expect(breakdownDefinition(for: .referrerDrilldown(referrer: "x")).allowsExternalOpen)
     }
 
