@@ -20,6 +20,9 @@ enum LiveError: LocalizedError {
     case noStorage
     case badServerURL(String)
     case badSharedLink
+    case linkPasswordRequired
+    case linkPasswordInvalid
+    case linkPasswordNeeded
 
     var errorDescription: String? {
         switch self {
@@ -29,6 +32,12 @@ enum LiveError: LocalizedError {
             return "“\(text)” is not a valid server URL (for example https://stats.example.com)."
         case .badSharedLink:
             return "That doesn't look like a shared dashboard link (it needs ?auth=)."
+        case .linkPasswordRequired:
+            return "This shared link is password-protected. Enter its password."
+        case .linkPasswordInvalid:
+            return "Wrong link password."
+        case .linkPasswordNeeded:
+            return "This shared link needs its password again. Remove the instance and re-add the link."
         }
     }
 }
@@ -99,25 +108,60 @@ actor LiveHub {
     /// Passwordless shared-link access (SHARE-01, read-only). Verifies the
     /// slug against the share bootstrap before saving anything; locked
     /// segment scope is enforced on every query through `limitedSegment`.
-    /// Password-protected links fail typed (no dashboard container) and are
-    /// never attempted silently.
-    func loginSharedLink(urlText: String) async throws -> AccountRef {
+    /// Password-protected links throw `linkPasswordRequired` when no
+    /// password is given (the UI then prompts); the unlock cookie persists
+    /// in the Keychain as a cookie-only credential — the password itself is
+    /// never stored. `linkPasswordInvalid` answers a wrong password.
+    func loginSharedLink(urlText: String, password: String? = nil) async throws -> AccountRef {
         guard let store else { throw LiveError.noStorage }
         guard let (baseURL, link) = SharedLinkRef.parse(urlText) else {
             throw LiveError.badSharedLink
         }
         _ = try RequestBuilder(baseURL: baseURL)
-        let shared = try await CE321SharedDiscovery(transport: transport)
-            .bootstrap(baseURL: baseURL, domain: link.domain, slug: link.slug)
-        let account = AccountID()
-        try store.save(AccountRecord(id: account, baseURL: baseURL, email: nil, sharedLink: link))
+        do {
+            let shared = try await CE321SharedDiscovery(transport: transport)
+                .bootstrap(baseURL: baseURL, domain: link.domain, slug: link.slug)
+            return try saveSharedAccount(store: store, baseURL: baseURL, link: link, shared: shared, locked: false)
+        } catch SharedLinkError.locked {
+            guard let password, !password.isEmpty else { throw LiveError.linkPasswordRequired }
+            let account = AccountID()
+            do {
+                let cookie = try await SharedLinkUnlock.unlock(
+                    baseURL: baseURL, domain: link.domain, slug: link.slug,
+                    password: password, transport: transport
+                )
+                // Cookie-only credential: unlocks stats requests, never a
+                // login session. SessionCoordinator paths never run for
+                // shared-link accounts.
+                try await credentials.save(
+                    SessionCredential(baseURL: baseURL, cookies: [cookie], retrievedAt: Date()),
+                    for: account
+                )
+            } catch SharedLinkError.wrongPassword {
+                throw LiveError.linkPasswordInvalid
+            }
+            // The unlock cookie now rides the shared transport jar, so the
+            // verify bootstrap succeeds like an open link's.
+            let shared = try await CE321SharedDiscovery(transport: transport)
+                .bootstrap(baseURL: baseURL, domain: link.domain, slug: link.slug)
+            return try saveSharedAccount(store: store, baseURL: baseURL, link: link, shared: shared, locked: true, account: account)
+        }
+    }
+
+    private func saveSharedAccount(
+        store: AccountStore, baseURL: URL, link: SharedLinkRef,
+        shared: CE321SharedDiscovery.SharedBootstrap, locked: Bool,
+        account: AccountID = AccountID()
+    ) throws -> AccountRef {
+        try store.save(AccountRecord(id: account, baseURL: baseURL, email: nil, sharedLink: link, linkLocked: locked))
         sharedAdapters[account] = CE321DashboardAdapter(
             coordinator: SessionCoordinator(
                 bridge: WebAuthenticationBridge(baseURL: baseURL),
                 credentials: credentials, accounts: store, transport: transport
             ),
             transport: transport,
-            sharedBase: baseURL, sharedAuth: link.slug
+            sharedBase: baseURL, sharedAuth: link.slug,
+            sharedCookies: locked ? SharedLinkCookieProvider(credentials: credentials, accountID: account) : nil
         )
         bootstraps[account.rawValue.uuidString + "/" + link.domain] = SiteBootstrap(
             snapshot: shared.snapshot, timeZone: nil
@@ -135,9 +179,11 @@ actor LiveHub {
         if let cached = limitedSegments[accountID] { return cached }
         guard let store,
               let record = try? store.load(id: accountID),
-              let link = record.sharedLink,
-              let shared = try? await CE321SharedDiscovery(transport: transport)
-                .bootstrap(baseURL: record.baseURL, domain: link.domain, slug: link.slug)
+              let link = record.sharedLink
+        else { return nil }
+        let cookies = (try? await credentials.load(for: accountID))?.cookies ?? []
+        guard let shared = try? await CE321SharedDiscovery(transport: transport)
+            .bootstrap(baseURL: record.baseURL, domain: link.domain, slug: link.slug, cookies: cookies)
         else { return nil }
         limitedSegments[accountID] = shared.limitedSegmentID
         return shared.limitedSegmentID
@@ -236,31 +282,49 @@ actor LiveHub {
     }
 
     func currentVisitors(accountID: AccountID, domain: String) async throws -> Int {
-        try await adapterFor(accountID: accountID)
+        try await requireLinkUnlocked(accountID: accountID)
+        return try await adapterFor(accountID: accountID)
             .currentVisitors(account: accountID, site: SiteID(domain: domain))
             .count
     }
 
     func export(_ query: DashboardQuery, today: Date) async throws -> DashboardExport {
-        try await adapterFor(accountID: query.accountID).export(query, today: today)
+        try await requireLinkUnlocked(accountID: query.accountID)
+        return try await adapterFor(accountID: query.accountID).export(query, today: today)
     }
 
     // MARK: Reports
 
     func overview(_ query: DashboardQuery, today: Date) async throws -> ReportEnvelope<Overview> {
-        try await adapterFor(accountID: query.accountID).overview(query, today: today)
+        try await requireLinkUnlocked(accountID: query.accountID)
+        return try await adapterFor(accountID: query.accountID).overview(query, today: today)
     }
 
     func series(_ query: DashboardQuery, today: Date) async throws -> ReportEnvelope<TimeSeries> {
-        try await adapterFor(accountID: query.accountID).series(query, today: today)
+        try await requireLinkUnlocked(accountID: query.accountID)
+        return try await adapterFor(accountID: query.accountID).series(query, today: today)
     }
 
     func breakdown(_ request: BreakdownRequest, today: Date) async throws -> ReportEnvelope<BreakdownPage> {
-        try await adapterFor(accountID: request.query.accountID).breakdown(request, today: today)
+        try await requireLinkUnlocked(accountID: request.query.accountID)
+        return try await adapterFor(accountID: request.query.accountID).breakdown(request, today: today)
     }
 
     func suggestions(_ request: SuggestionRequest, today: Date) async throws -> [FilterSuggestion] {
-        try await adapterFor(accountID: request.query.accountID).suggestions(request, today: today)
+        try await requireLinkUnlocked(accountID: request.query.accountID)
+        return try await adapterFor(accountID: request.query.accountID).suggestions(request, today: today)
+    }
+
+    /// Locked shared links need their unlock cookie before any report.
+    /// Without it the server answers 404, which would misread as a dead
+    /// instance — fail early with the re-auth prompt instead.
+    private func requireLinkUnlocked(accountID: AccountID) async throws {
+        guard let store,
+              let record = try? store.load(id: accountID),
+              record.sharedLink != nil, record.linkLocked
+        else { return }
+        let cookies = (try? await credentials.load(for: accountID))?.cookies ?? []
+        if cookies.isEmpty { throw LiveError.linkPasswordNeeded }
     }
 
     // MARK: Internals
@@ -303,7 +367,8 @@ actor LiveHub {
         if let link = record.sharedLink {
             let adapter = CE321DashboardAdapter(
                 coordinator: coordinator, transport: transport,
-                sharedBase: record.baseURL, sharedAuth: link.slug
+                sharedBase: record.baseURL, sharedAuth: link.slug,
+                sharedCookies: record.linkLocked ? SharedLinkCookieProvider(credentials: credentials, accountID: accountID) : nil
             )
             sharedAdapters[accountID] = adapter
             return adapter
@@ -368,6 +433,8 @@ struct LoginView: View {
     @State private var message: String?
     @State private var useSharedLink = false
     @State private var sharedURL = ""
+    @State private var linkPassword = ""
+    @State private var needsLinkPassword = false
 
     var body: some View {
         Form {
@@ -404,6 +471,11 @@ struct LoginView: View {
                         .textInputAutocapitalization(.never)
 #endif
                         .accessibilityIdentifier("login-shared-url")
+                    if needsLinkPassword {
+                        SecureField("Link password", text: $linkPassword)
+                            .textContentType(.password)
+                            .accessibilityIdentifier("login-shared-password")
+                    }
                 } else {
                     TextField("Server (https://stats.example.com)", text: $server)
                     .textContentType(.URL)
@@ -454,7 +526,18 @@ struct LoginView: View {
         defer { busy = false }
         do {
             if useSharedLink {
-                _ = try await hub.loginSharedLink(urlText: sharedURL)
+                do {
+                    _ = try await hub.loginSharedLink(
+                        urlText: sharedURL,
+                        password: needsLinkPassword ? linkPassword : nil
+                    )
+                } catch LiveError.linkPasswordRequired {
+                    needsLinkPassword = true
+                    message = LiveError.linkPasswordRequired.localizedDescription
+                    return
+                }
+                linkPassword = ""
+                needsLinkPassword = false
                 onLogin()
                 return
             }

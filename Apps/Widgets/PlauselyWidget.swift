@@ -225,9 +225,25 @@ private enum WidgetReportLoader {
             )
             let adapter: CE321DashboardAdapter
             if let shared = record.sharedLink {
+                // Locked links need the unlock cookie: without it the
+                // server answers 404, which would misread as no data.
+                // The cookie lives in the shared Keychain group beside
+                // login sessions; the password itself is never stored.
+                if record.linkLocked,
+                   ((try? await credentials.load(for: AccountID(rawValue: uuid)))?.cookies ?? []).isEmpty
+                {
+                    return failure(
+                        configuration,
+                        message: "This shared link is password-protected. Open Plausely and enter its password.",
+                        date: now
+                    )
+                }
                 adapter = CE321DashboardAdapter(
                     coordinator: coordinator, transport: transport,
-                    sharedBase: record.baseURL, sharedAuth: shared.slug
+                    sharedBase: record.baseURL, sharedAuth: shared.slug,
+                    sharedCookies: record.linkLocked ? SharedLinkCookieProvider(
+                        credentials: credentials, accountID: AccountID(rawValue: uuid)
+                    ) : nil
                 )
             } else {
                 adapter = CE321DashboardAdapter(coordinator: coordinator, transport: transport)

@@ -127,4 +127,28 @@ struct StoreTests {
         #expect(migrated.email == "a@test")
         try FileManager.default.removeItem(at: dir)
     }
+
+    @Test("locked links persist the lock flag, v2 records migrate unlocked")
+    func linkLockedMigration() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "plausely-acct-\(UUID().uuidString)")
+        let store = AccountStore(directory: dir)
+        let locked = AccountRecord(
+            id: AccountID(), baseURL: URL(string: "https://stats.example.com")!, email: nil,
+            sharedLink: SharedLinkRef(domain: "shop.example", slug: "abc123"), linkLocked: true
+        )
+        try store.save(locked)
+        #expect(try store.load(id: locked.id)?.linkLocked == true)
+        // v2 JSON (no linkLocked key, schema 2) adopts unlocked, never locked.
+        let v2id = AccountID()
+        let v2 = """
+        {"id":{"rawValue":"\(v2id.rawValue.uuidString)"},"baseURL":"https:\\/\\/a.test","email":null,"sharedLink":{"domain":"shop.example","slug":"abc123"},"createdAt":718000000,"lastUsedAt":718000000,"schemaVersion":2}
+        """
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try v2.write(to: dir.appending(path: "\(v2id.rawValue.uuidString).json"), atomically: true, encoding: .utf8)
+        let migrated = try #require(try store.load(id: v2id))
+        #expect(migrated.schemaVersion == AccountRecord.currentSchemaVersion)
+        #expect(migrated.linkLocked == false)
+        #expect(migrated.sharedLink == SharedLinkRef(domain: "shop.example", slug: "abc123"))
+        try FileManager.default.removeItem(at: dir)
+    }
 }

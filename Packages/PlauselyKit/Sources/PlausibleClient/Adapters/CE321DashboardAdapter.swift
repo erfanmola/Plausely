@@ -15,19 +15,25 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     /// silent fallback between the two.
     private let sharedBase: URL?
     private let sharedAuth: String?
+    /// Unlock-cookie source for password-protected shared links. Read per
+    /// request so rotation never goes stale; nil for open links and
+    /// session accounts.
+    private let sharedCookies: SharedLinkCookieProvider?
 
-    public init(coordinator: SessionCoordinator, transport: HTTPTransport) {
+    public init(coordinator: SessionCoordinator, transport: HTTPTransport, sharedCookies: SharedLinkCookieProvider? = nil) {
         self.coordinator = coordinator
         self.transport = transport
         self.sharedBase = nil
         self.sharedAuth = nil
+        self.sharedCookies = sharedCookies
     }
 
-    public init(coordinator: SessionCoordinator, transport: HTTPTransport, sharedBase: URL, sharedAuth: String) {
+    public init(coordinator: SessionCoordinator, transport: HTTPTransport, sharedBase: URL, sharedAuth: String, sharedCookies: SharedLinkCookieProvider? = nil) {
         self.coordinator = coordinator
         self.transport = transport
         self.sharedBase = sharedBase
         self.sharedAuth = sharedAuth
+        self.sharedCookies = sharedCookies
     }
 
     // MARK: - Query strings
@@ -78,13 +84,21 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     }
 
     /// Request builder honoring the account mode: session cookies for
-    /// interactive accounts, `?auth=` slug for shared-link accounts.
+    /// interactive accounts, `?auth=` slug for shared-link accounts plus
+    /// the unlock `Cookie` header when the link is password-protected.
     private func requestFor(domain: String, path: String, account: AccountID, items: [URLQueryItem], accept: String = "application/json") async throws -> URLRequest {
         if let sharedBase, let sharedAuth {
             let builder = try RequestBuilder(baseURL: sharedBase)
             var items = items
             items.append(URLQueryItem(name: "auth", value: sharedAuth))
-            return builder.get(path: path, query: items, headers: [:], accept: accept)
+            var headers: [String: String] = [:]
+            if let provider = sharedCookies {
+                let cookies = await provider.cookies().map { "\($0.name)=\($0.value)" }
+                if !cookies.isEmpty {
+                    headers["Cookie"] = cookies.joined(separator: "; ")
+                }
+            }
+            return builder.get(path: path, query: items, headers: headers, accept: accept)
         }
         let credential = try await coordinator.restore(account: account)
         let builder = try RequestBuilder(baseURL: credential.baseURL)

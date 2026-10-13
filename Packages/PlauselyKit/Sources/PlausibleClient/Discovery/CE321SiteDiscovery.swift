@@ -79,8 +79,9 @@ public struct CE321SiteDiscovery: SiteDiscoveryService, Sendable {
 }
 
 /// Passwordless shared dashboard bootstrap over `/share/:domain?auth=`.
-/// Password-protected links render no dashboard container and throw
-/// unknownLayout — a typed unsupported, never attempted silently.
+/// Password-protected links render the password gate instead of a
+/// dashboard container and throw `SharedLinkError.locked` — typed and
+/// actionable (unlock with the link password), never attempted silently.
 public struct CE321SharedDiscovery: Sendable {
     private let transport: HTTPTransport
 
@@ -97,16 +98,22 @@ public struct CE321SharedDiscovery: Sendable {
         }
     }
 
-    public func bootstrap(baseURL: URL, domain: String, slug: String) async throws -> SharedBootstrap {
+    public func bootstrap(baseURL: URL, domain: String, slug: String, cookies: [CookieRecord] = []) async throws -> SharedBootstrap {
         let builder = try RequestBuilder(baseURL: baseURL)
-        let request = builder.get(
+        var request = builder.get(
             path: "share/\(domain)",
             query: [URLQueryItem(name: "auth", value: slug)]
         )
+        if !cookies.isEmpty {
+            request.setValue(cookies.map { "\($0.name)=\($0.value)" }.joined(separator: "; "), forHTTPHeaderField: "Cookie")
+        }
         let (data, response) = try await transport.send(request, expecting: .html)
         guard let html = String(data: data, encoding: .utf8),
               (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw ClientError.siteUnavailable
+        }
+        if SharedLinkUnlock.isLocked(html: html) {
+            throw SharedLinkError.locked
         }
         let snapshot = try CE321BootstrapDecoder.decode(html: html)
         return SharedBootstrap(

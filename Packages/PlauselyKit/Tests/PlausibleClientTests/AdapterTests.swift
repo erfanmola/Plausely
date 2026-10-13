@@ -438,4 +438,51 @@ struct AdapterTests {
         #expect(result.filename == "plausely-export.zip")
         #expect(result.data.starts(with: [0x50, 0x4B]))
     }
+
+    @Test("shared links send auth param plus unlock cookie")
+    func sharedLinkCookies() async throws {
+        let account = testQuery().accountID
+        let credentials = KeychainCredentialStore(service: "ir.developex.Plausely.test-\(UUID().uuidString)")
+        try await credentials.save(SessionCredential(
+            baseURL: URL(string: "https://stats.example.test")!,
+            cookies: [CookieRecord(
+                name: "shared-link-abc", value: "v", domain: "stats.example.test",
+                path: "/", secure: true, httpOnly: true
+            )],
+            retrievedAt: Date()
+        ), for: account)
+        let dir = FileManager.default.temporaryDirectory.appending(path: "plausely-ad-\(UUID().uuidString)")
+        let coordinator = SessionCoordinator(
+            bridge: FakeBridge2(), credentials: FakeCredentialStore2(),
+            accounts: AccountStore(directory: dir), transport: CannedTransport(handler: { _ in Data() })
+        )
+        let capture = RequestCapture()
+        let locked = CE321DashboardAdapter(
+            coordinator: coordinator,
+            transport: CannedTransport(handler: { request in
+                capture.save(request)
+                return try fixtureData("top-stats.day")
+            }),
+            sharedBase: URL(string: "https://stats.example.test")!,
+            sharedAuth: "abc",
+            sharedCookies: SharedLinkCookieProvider(credentials: credentials, accountID: account)
+        )
+        _ = try await locked.overview(testQuery(), today: Date())
+        let request = try #require(capture.request)
+        #expect((request.url?.query ?? "").contains("auth=abc"))
+        #expect(request.value(forHTTPHeaderField: "Cookie") == "shared-link-abc=v")
+        // Open links carry no Cookie header.
+        let capture2 = RequestCapture()
+        let open = CE321DashboardAdapter(
+            coordinator: coordinator,
+            transport: CannedTransport(handler: { request in
+                capture2.save(request)
+                return try fixtureData("top-stats.day")
+            }),
+            sharedBase: URL(string: "https://stats.example.test")!,
+            sharedAuth: "abc"
+        )
+        _ = try await open.overview(testQuery(), today: Date())
+        #expect(capture2.request?.value(forHTTPHeaderField: "Cookie") == nil)
+    }
 }

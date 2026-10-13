@@ -42,30 +42,36 @@ public struct SharedLinkRef: Equatable, Codable, Sendable {
 /// Nonsecret account record. Lives in Application Support as versioned JSON,
 /// one file per account. Never holds cookies, passwords, or tokens.
 public struct AccountRecord: Equatable, Sendable, Codable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
     public let id: AccountID
     public let baseURL: URL
     public let email: String?
     public let sharedLink: SharedLinkRef?
+    /// Whether the shared link is password-protected (unlock cookie in the
+    /// Keychain). False for open links and session accounts. Drives the
+    /// missing-cookie prompt in the app and widget. Never a secret itself.
+    public let linkLocked: Bool
     public let createdAt: Date
     public let lastUsedAt: Date
     public let schemaVersion: Int
 
     public init(
         id: AccountID, baseURL: URL, email: String?, sharedLink: SharedLinkRef? = nil,
+        linkLocked: Bool = false,
         createdAt: Date = Date(), lastUsedAt: Date = Date()
     ) {
         self.id = id
         self.baseURL = baseURL
         self.email = email
         self.sharedLink = sharedLink
+        self.linkLocked = linkLocked
         self.createdAt = createdAt
         self.lastUsedAt = lastUsedAt
         self.schemaVersion = Self.currentSchemaVersion
     }
 
     private enum Keys: String, CodingKey {
-        case id, baseURL, email, sharedLink, createdAt, lastUsedAt, schemaVersion
+        case id, baseURL, email, sharedLink, linkLocked, createdAt, lastUsedAt, schemaVersion
     }
 
     public init(from decoder: Decoder) throws {
@@ -73,8 +79,9 @@ public struct AccountRecord: Equatable, Sendable, Codable {
         id = try container.decode(AccountID.self, forKey: .id)
         baseURL = try container.decode(URL.self, forKey: .baseURL)
         email = try container.decodeIfPresent(String.self, forKey: .email)
-        // v1 records predate shared links.
+        // v1 records predate shared links; v2 records predate link locks.
         sharedLink = try container.decodeIfPresent(SharedLinkRef.self, forKey: .sharedLink)
+        linkLocked = try container.decodeIfPresent(Bool.self, forKey: .linkLocked) ?? false
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         lastUsedAt = try container.decode(Date.self, forKey: .lastUsedAt)
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 0
@@ -86,6 +93,7 @@ public struct AccountRecord: Equatable, Sendable, Codable {
         try container.encode(baseURL, forKey: .baseURL)
         try container.encodeIfPresent(email, forKey: .email)
         try container.encodeIfPresent(sharedLink, forKey: .sharedLink)
+        try container.encode(linkLocked, forKey: .linkLocked)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(lastUsedAt, forKey: .lastUsedAt)
         try container.encode(schemaVersion, forKey: .schemaVersion)
@@ -273,11 +281,13 @@ public struct AccountStore: Sendable {
     private func migrate(_ record: AccountRecord) throws -> AccountRecord {
         // v0 had no schemaVersion field (decoded as 0): stamp current version.
         // v1 predates shared links (decoded as nil): adopt as-is.
+        // v2 predates link locks (decoded as false): adopt as-is.
         // Unknown future versions are a typed failure, never silent adoption.
-        if record.schemaVersion == 0 || record.schemaVersion == 1 {
+        if record.schemaVersion == 0 || record.schemaVersion == 1 || record.schemaVersion == 2 {
             return AccountRecord(
                 id: record.id, baseURL: record.baseURL, email: record.email,
-                sharedLink: record.sharedLink, createdAt: record.createdAt, lastUsedAt: record.lastUsedAt
+                sharedLink: record.sharedLink, linkLocked: record.linkLocked,
+                createdAt: record.createdAt, lastUsedAt: record.lastUsedAt
             )
         }
         guard record.schemaVersion == AccountRecord.currentSchemaVersion else {

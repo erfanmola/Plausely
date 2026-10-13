@@ -6,6 +6,13 @@ public protocol HTTPTransport: Sendable {
     func send(_ request: URLRequest, expecting: ContentKind) async throws -> (Data, HTTPURLResponse)
 }
 
+/// Transport that can also report cookies its session has jarred. The
+/// password-unlock flow captures the authenticate cookie from the
+/// redirect chain this way; nothing else reads the jar.
+public protocol CookieReadingTransport: HTTPTransport {
+    func cookieValue(named name: String) -> String?
+}
+
 extension HTTPTransport {
     /// JSON-contract shorthand.
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -50,8 +57,13 @@ public final class URLSessionTransport: NSObject, HTTPTransport, Sendable {
         // Retain guard via session's strong delegate reference.
     }
 
-    public func send(_ request: URLRequest, expecting: ContentKind = .json) async throws -> (Data, HTTPURLResponse) {
-        var attempt = 0
+    /// Value of a cookie this session has jarred, if any. Used once per
+    /// password-unlock to capture the authenticate cookie.
+    public func cookieValue(named name: String) -> String? {
+        session.configuration.httpCookieStorage?.cookies?.first { $0.name == name }?.value
+    }
+
+    public func send(_ request: URLRequest, expecting: ContentKind = .json) async throws -> (Data, HTTPURLResponse) {        var attempt = 0
         while true {
             do {
                 try Task.checkCancellation()
@@ -87,6 +99,8 @@ public final class URLSessionTransport: NSObject, HTTPTransport, Sendable {
         }
     }
 }
+
+extension URLSessionTransport: CookieReadingTransport {}
 
 /// Same-origin redirect guard. Pure decision function is unit-tested;
 /// the delegate applies it to live navigations.
