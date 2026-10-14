@@ -809,6 +809,10 @@ public struct BreakdownSummaryView: View {
                         }
                         .padding(.horizontal, 14)
                     }
+                    // Full-bounds hit testing: without an explicit shape
+                    // only rendered content (the bar, the texts) answers
+                    // long-press, leaving the row's empty stretch dead.
+                    .contentShape(Rectangle())
                     .modifier(RowContextMenu(
                         definition: model.definition, row: row,
                         siteDomain: query?.siteID.domain, onFilter: onFilter
@@ -1376,6 +1380,7 @@ public struct BreakdownReportView: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
+                .contentShape(Rectangle())
                 .modifier(RowContextMenu(
                     definition: model.definition, row: row,
                     siteDomain: model.query.siteID.domain, onFilter: onFilter
@@ -1394,6 +1399,7 @@ public struct BreakdownReportView: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
+                .contentShape(Rectangle())
                 .modifier(RowContextMenu(
                     definition: model.definition, row: row,
                     siteDomain: model.query.siteID.domain, onFilter: onFilter
