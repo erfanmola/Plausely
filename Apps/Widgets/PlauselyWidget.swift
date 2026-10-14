@@ -417,6 +417,36 @@ struct PlauselyWidgetView: View {
     let entry: PlauselyWidgetEntry
 
     var body: some View {
+        Group {
+            switch family {
+#if !os(macOS)
+            case .accessoryRectangular:
+                accessoryRectangular
+            case .accessoryInline:
+                Text("\(entry.metrics.first?.value ?? "—") \(entry.metrics.first?.name ?? "Visitors")")
+#endif
+            default:
+                standardContent
+            }
+        }
+        .containerBackground(for: .widget) { Color.clear }
+    }
+
+    /// Lock-screen rectangular widget: headline value plus domain.
+    private var accessoryRectangular: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(entry.metrics.first?.value ?? "—")
+                .font(.headline)
+            Text(entry.domain)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var standardContent: some View {
         VStack(alignment: .center, spacing: family == .systemSmall ? 7 : 6) {
             HStack(spacing: 6) {
                 Text(entry.domain)
@@ -455,7 +485,6 @@ struct PlauselyWidgetView: View {
         }
         .padding(.horizontal, family == .systemSmall ? 12 : 14)
         .padding(.vertical, family == .systemSmall ? 10 : 11)
-        .containerBackground(for: .widget) { Color.clear }
     }
 
     private var smallContent: some View {
@@ -621,7 +650,11 @@ struct PlauselyAnalyticsWidget: Widget {
         .configurationDisplayName("Plausely Analytics")
         .description("Keep analytics for a chosen website and period in view. Refreshes may be delayed by WidgetKit.")
         .contentMarginsDisabled()
+#if os(macOS)
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
+#else
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge, .accessoryRectangular, .accessoryInline])
+#endif
     }
 }
 

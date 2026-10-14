@@ -57,6 +57,9 @@ public struct HomeRootView: View {
     @State private var generation: UInt64 = 0
     @State private var handledWidgetDestination: WidgetSiteDestination?
     @State private var applyingWidgetDestination: WidgetSiteDestination?
+#if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+#endif
 
     public init(
         directory: any SiteDirectory,
@@ -96,38 +99,16 @@ public struct HomeRootView: View {
     }
 
     public var body: some View {
-        TabView(selection: $selectedTab) {
-            HomeOverviewTab(
-                selection: selection, queryModel: queryModel,
-                overviewModel: overviewModel, realtimeModel: realtimeModel,
-                sparkline: sparkline
-            )
-            .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis") }
-            .tag(Tab.overview)
-            HomeBreakdownsTab(
-                queryModel: queryModel,
-                channelsModel: channelsModel, sourcesModel: sourcesModel,
-                pagesModel: pagesModel, entryModel: entryModel,
-                exitModel: exitModel, countriesModel: countriesModel,
-                browsersModel: browsersModel, screensModel: screensModel,
-                systemsModel: systemsModel,
-                childFactory: childFactory,
-                onFilter: filterAction,
-                onExport: onExport,
-                isActive: selectedTab == .breakdowns
-            )
-            .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle") }
-            .tag(Tab.breakdowns)
-            HomeGoalsTab(
-                queryModel: queryModel, goalsModel: goalsModel,
-                childFactory: childFactory, onFilter: filterAction,
-                isActive: selectedTab == .goals
-            )
-            .tabItem { Label("Goals", systemImage: "target") }
-            .tag(Tab.goals)
-            HomeSettingsTab(selection: selection, onSignOut: onSignOut)
-                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
-                .tag(Tab.settings)
+        Group {
+#if os(iOS)
+            if sizeClass == .regular {
+                splitView
+            } else {
+                tabView
+            }
+#else
+            tabView
+#endif
         }
         .onChange(of: selection.query) { _, query in
             rebuildModels(for: query)
@@ -166,7 +147,112 @@ public struct HomeRootView: View {
             guard booted else { return }
             Task { await applyWidgetDestination() }
         }
+        .focusedValue(
+            \.plauselyRefresh,
+            PlauselyRefreshAction(refresh: {
+                [overviewModel, channelsModel, sourcesModel, pagesModel, entryModel,
+                 exitModel, countriesModel, browsersModel, screensModel, systemsModel,
+                 goalsModel] in
+                await overviewModel?.refresh(today: Date())
+                let models = [channelsModel, sourcesModel, pagesModel, entryModel, exitModel,
+                              countriesModel, browsersModel, screensModel, systemsModel].compactMap { $0 }
+                await withTaskGroup(of: Void.self) { group in
+                    for model in models {
+                        group.addTask { await model.load(today: Date()) }
+                    }
+                }
+                await goalsModel?.load(today: Date())
+            })
+        )
     }
+
+    /// Compact iPhone layout: the native tab bar.
+    private var tabView: some View {
+        TabView(selection: $selectedTab) {
+            HomeOverviewTab(
+                selection: selection, queryModel: queryModel,
+                overviewModel: overviewModel, realtimeModel: realtimeModel,
+                sparkline: sparkline
+            )
+            .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis") }
+            .tag(Tab.overview)
+            HomeBreakdownsTab(
+                queryModel: queryModel,
+                channelsModel: channelsModel, sourcesModel: sourcesModel,
+                pagesModel: pagesModel, entryModel: entryModel,
+                exitModel: exitModel, countriesModel: countriesModel,
+                browsersModel: browsersModel, screensModel: screensModel,
+                systemsModel: systemsModel,
+                childFactory: childFactory,
+                onFilter: filterAction,
+                onExport: onExport,
+                isActive: selectedTab == .breakdowns
+            )
+            .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle") }
+            .tag(Tab.breakdowns)
+            HomeGoalsTab(
+                queryModel: queryModel, goalsModel: goalsModel,
+                childFactory: childFactory, onFilter: filterAction,
+                isActive: selectedTab == .goals
+            )
+            .tabItem { Label("Goals", systemImage: "target") }
+            .tag(Tab.goals)
+            HomeSettingsTab(selection: selection, onSignOut: onSignOut)
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(Tab.settings)
+        }
+    }
+
+#if os(iOS)
+    /// Regular-width iPad layout: sidebar navigation with the same tab
+    /// content in detail. Compact iPhones keep the tab bar untouched.
+    private var splitView: some View {
+        NavigationSplitView {
+            List(selection: Binding(
+                get: { Optional(selectedTab) },
+                set: { if let tab = $0 { selectedTab = tab } }
+            )) {
+                Label("Overview", systemImage: "chart.line.uptrend.xyaxis").tag(Tab.overview)
+                Label("Breakdowns", systemImage: "list.bullet.rectangle").tag(Tab.breakdowns)
+                Label("Goals", systemImage: "target").tag(Tab.goals)
+                Label("Settings", systemImage: "gearshape.fill").tag(Tab.settings)
+            }
+            .navigationTitle("Plausely")
+        } detail: {
+            Group {
+                switch selectedTab {
+                case .overview:
+                    HomeOverviewTab(
+                        selection: selection, queryModel: queryModel,
+                        overviewModel: overviewModel, realtimeModel: realtimeModel,
+                        sparkline: sparkline
+                    )
+                case .breakdowns:
+                    HomeBreakdownsTab(
+                        queryModel: queryModel,
+                        channelsModel: channelsModel, sourcesModel: sourcesModel,
+                        pagesModel: pagesModel, entryModel: entryModel,
+                        exitModel: exitModel, countriesModel: countriesModel,
+                        browsersModel: browsersModel, screensModel: screensModel,
+                        systemsModel: systemsModel,
+                        childFactory: childFactory,
+                        onFilter: filterAction,
+                        onExport: onExport,
+                        isActive: selectedTab == .breakdowns
+                    )
+                case .goals:
+                    HomeGoalsTab(
+                        queryModel: queryModel, goalsModel: goalsModel,
+                        childFactory: childFactory, onFilter: filterAction,
+                        isActive: selectedTab == .goals
+                    )
+                case .settings:
+                    HomeSettingsTab(selection: selection, onSignOut: onSignOut)
+                }
+            }
+        }
+    }
+#endif
 
     @MainActor
     private func applyWidgetDestination() async {
@@ -306,8 +392,7 @@ public struct HomeRootView: View {
         }
     }
 
-    private func updateRealtimeTick() {
-        guard let effective = queryModel?.effective, effective.period == .realtime else {
+    private func updateRealtimeTick() {        guard let effective = queryModel?.effective, effective.period == .realtime else {
             realtimeModel.onTick = nil
             return
         }

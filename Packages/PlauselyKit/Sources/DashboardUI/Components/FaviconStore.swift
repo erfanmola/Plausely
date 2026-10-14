@@ -24,9 +24,13 @@ public final class FaviconStore: ObservableObject {
     private let session: URLSession
     private var inFlight: Set<String> = []
     private let freshness: TimeInterval = 30 * 24 * 3600
+    /// Fetch dates backing cache freshness. UserDefaults (not file
+    /// timestamps) so the app uses no required-reason APIs.
+    private let stampDefaults: UserDefaults
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = .shared, stampDefaults: UserDefaults = .standard) {
         self.session = session
+        self.stampDefaults = stampDefaults
         memory.countLimit = 300
     }
 
@@ -92,9 +96,8 @@ public final class FaviconStore: ObservableObject {
 
     private func readDisk(for key: String) -> PlatformImage? {
         guard let directory,
-              let attributes = try? FileManager.default.attributesOfItem(atPath: directory.appendingPathComponent(Self.fileName(for: key)).path),
-              let modified = attributes[.modificationDate] as? Date,
-              Date().timeIntervalSince(modified) < freshness,
+              let stamped = stampDefaults.object(forKey: Self.stampKey(for: key)) as? Date,
+              Date().timeIntervalSince(stamped) < freshness,
               let data = try? Data(contentsOf: directory.appendingPathComponent(Self.fileName(for: key))),
               let image = PlatformImage(data: data)
         else { return nil }
@@ -105,6 +108,11 @@ public final class FaviconStore: ObservableObject {
         guard let directory else { return }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? data.write(to: directory.appendingPathComponent(Self.fileName(for: key)), options: .atomic)
+        stampDefaults.set(Date(), forKey: Self.stampKey(for: key))
+    }
+
+    private static func stampKey(for host: String) -> String {
+        "favicon-fetched-\(host.lowercased())"
     }
 }
 

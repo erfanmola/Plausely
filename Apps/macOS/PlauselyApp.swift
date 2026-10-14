@@ -108,6 +108,23 @@ struct MacRootView: View {
         .onChange(of: queryModel?.effective) {
             updateRealtimeTick()
         }
+        .focusedValue(
+            \.plauselyRefresh,
+            PlauselyRefreshAction(refresh: {
+                [overviewModel, channelsModel, sourcesModel, pagesModel, entryModel,
+                 exitModel, countriesModel, browsersModel, screensModel, systemsModel,
+                 goalsModel] in
+                await overviewModel?.refresh(today: Date())
+                let models = [channelsModel, sourcesModel, pagesModel, entryModel, exitModel,
+                              countriesModel, browsersModel, screensModel, systemsModel].compactMap { $0 }
+                await withTaskGroup(of: Void.self) { group in
+                    for model in models {
+                        group.addTask { await model.load(today: Date()) }
+                    }
+                }
+                await goalsModel?.load(today: Date())
+            })
+        )
     }
 
     /// Rebuilds every report model for the selected query and (re)starts

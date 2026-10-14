@@ -1,6 +1,11 @@
 import AnalyticsCore
 import Charts
 import SwiftUI
+#if os(iOS)
+import UIKit
+#else
+import AppKit
+#endif
 
 /// Deterministic breakdown loader for UI tests and previews. Generates 1500
 /// rows (`Source 0001`… with repeating values so ties keep server order) and
@@ -604,6 +609,70 @@ public struct CountryDistributionView: View {
     }
 }
 
+/// Native context actions for one breakdown row: filter by the row's
+/// dimension where the family supports it, open the link where the
+/// family allows it, and always copy the name. Every action degrades
+/// away when unsupported, so the menu never offers a dead row.
+struct RowContextMenu: ViewModifier {
+    let definition: ReportDefinition
+    let row: BreakdownRow
+    let siteDomain: String?
+    let onFilter: BreakdownFilterAction?
+    @Environment(\.openURL) private var openURL
+
+    func body(content: Content) -> some View {
+        content.contextMenu {
+            if let dimension = definition.filterDimension,
+               let clause = definition.filterClause(for: row.name, code: row.code),
+               onFilter != nil
+            {
+                Button {
+                    _ = onFilter?(clause)
+                } label: {
+                    Label(
+                        "Filter by this \(dimensionName(dimension).lowercased())",
+                        systemImage: "line.3.horizontal.decrease.circle"
+                    )
+                }
+            }
+            if let url = openTarget {
+                Button {
+                    openURL(url)
+                } label: {
+                    Label("Open link", systemImage: "arrow.up.forward.app")
+                }
+            }
+            Button {
+                copyName()
+            } label: {
+                Label("Copy name", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    /// Same Open resolution as the row detail: self-contained URLs
+    /// through the gate, or site-relative paths against the site domain.
+    private var openTarget: URL? {
+        if definition.allowsExternalOpen {
+            return ExternalLinkGate.url(for: row.name)
+        }
+        if definition.pagePaths, let siteDomain, row.name.hasPrefix("/") {
+            return ExternalLinkGate.url(for: "https://\(siteDomain)\(row.name)")
+        }
+        return nil
+    }
+
+    private func copyName() {
+#if os(iOS)
+        UIPasteboard.general.string = row.name
+#else
+        let board = NSPasteboard.general
+        board.clearContents()
+        board.setString(row.name, forType: .string)
+#endif
+    }
+}
+
 /// Row glyph: the dashboard flag emoji for geo rows, a remote favicon for
 /// host rows (sources + referrer URLs via DuckDuckGo's privacy-friendly
 /// icon proxy, AsyncImage-cached, family symbol while loading/on error),
@@ -740,6 +809,10 @@ public struct BreakdownSummaryView: View {
                         }
                         .padding(.horizontal, 14)
                     }
+                    .modifier(RowContextMenu(
+                        definition: model.definition, row: row,
+                        siteDomain: query?.siteID.domain, onFilter: onFilter
+                    ))
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("\(prefix)-summary-\(index)")
                 }
@@ -1303,6 +1376,10 @@ public struct BreakdownReportView: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
+                .modifier(RowContextMenu(
+                    definition: model.definition, row: row,
+                    siteDomain: model.query.siteID.domain, onFilter: onFilter
+                ))
             }
             .accessibilityIdentifier("\(prefix)-row-\(index)")
         } else {
@@ -1317,6 +1394,10 @@ public struct BreakdownReportView: View {
                         .foregroundStyle(.tertiary)
                         .accessibilityHidden(true)
                 }
+                .modifier(RowContextMenu(
+                    definition: model.definition, row: row,
+                    siteDomain: model.query.siteID.domain, onFilter: onFilter
+                ))
             }
             .accessibilityIdentifier("\(prefix)-row-\(index)")
         }

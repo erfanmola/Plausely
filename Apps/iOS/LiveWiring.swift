@@ -433,6 +433,7 @@ struct LiveSiteDirectory: SiteDirectory, Sendable {
 struct LoginView: View {
     let hub: LiveHub
     var onLogin: () -> Void
+    var onDemo: () -> Void = {}
     @State private var server = ""
     @State private var email = ""
     @State private var password = ""
@@ -519,6 +520,9 @@ struct LoginView: View {
                 .disabled(busy || (useSharedLink ? sharedURL.isEmpty : (server.isEmpty || email.isEmpty || password.isEmpty)))
                 .accessibilityIdentifier("login-submit")
                 .animation(.snappy, value: busy)
+                Button("Explore demo data", action: onDemo)
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("login-demo")
             }
         }
         .frame(maxWidth: 620)
@@ -585,6 +589,7 @@ struct LiveRootView: View {
     @State private var widgetDestination: WidgetSiteDestination?
     @State private var signOutError: String?
     @State private var showingSignOutError = false
+    @State private var demoMode = false
 
     init() {
         let hub = self.hub
@@ -595,13 +600,17 @@ struct LiveRootView: View {
 
     var body: some View {
         Group {
-            if !accountsLoaded {
+            if demoMode {
+                DemoRootView { demoMode = false }
+            } else if !accountsLoaded {
                 ProgressView(widgetDestination.map { "Loading \($0.domain)…" } ?? "Loading instances…")
                     .accessibilityIdentifier("live-loading")
             } else if accounts.isEmpty {
                 NavigationStack {
                     LoginView(hub: hub) {
                         Task { await refreshAccounts() }
+                    } onDemo: {
+                        demoMode = true
                     }
                 }
             } else {
