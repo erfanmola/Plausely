@@ -14,32 +14,34 @@ public struct HomeHeroView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 6) {
-            HStack(alignment: .center, spacing: 12) {
-                LivePulseDot(active: model.count != nil, reduceMotion: reduceMotion)
-                if let count = model.count {
-                    Text(formatter.string(for: .count(Int64(count)), as: .visitors))
-                        .font(.system(size: 56, weight: .bold))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                        .animation(.snappy, value: count)
-                        .accessibilityIdentifier("home-hero-count")
-                } else {
-                    SkeletonBlocks(rows: 1, rowHeight: 64)
-                        .frame(width: 160)
-                        .accessibilityIdentifier("home-hero-loading")
+        Group {
+            if model.count != nil {
+                VStack(spacing: 6) {
+                    HStack(alignment: .center, spacing: 12) {
+                        LivePulseDot(active: model.count != nil, reduceMotion: reduceMotion)
+                        if let count = model.count {
+                            Text(formatter.string(for: .count(Int64(count)), as: .visitors))
+                                .font(.system(size: 56, weight: .bold))
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                                .animation(.snappy, value: count)
+                                .accessibilityIdentifier("home-hero-count")
+                        }
+                        // Invisible balance for the dot: the number lands on true
+                        // center instead of sitting right of it.
+                        Color.clear
+                            .frame(width: 30, height: 30)
+                            .accessibilityHidden(true)
+                    }
+                    Text("current visitors")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
-                // Invisible balance for the dot: the number lands on true
-                // center instead of sitting right of it.
-                Color.clear
-                    .frame(width: 30, height: 30)
-                    .accessibilityHidden(true)
+            } else {
+                HeroSkeleton()
+                    .accessibilityIdentifier("home-hero-loading")
             }
-            Text("current visitors")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .accessibilityIdentifier("home-hero-label")
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityElement(children: .contain)

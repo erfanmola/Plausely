@@ -17,17 +17,11 @@ struct HomeOverviewTab: View {
                     if let domain = selection.pendingSiteDomain {
                         siteLoadingView(domain)
                     } else {
-                        // First paint: shimmer for the directory + restore,
-                        // never a premature empty picker.
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Loading…")
-                                .font(.title2)
-                                .bold()
-                                .foregroundStyle(.secondary)
-                            SkeletonBlocks(rows: 8, rowHeight: 56)
-                        }
-                        .accessibilityIdentifier("home-boot")
-                        .padding(.top, 8)
+                        // First paint: picker-shaped shimmer for the
+                        // directory + restore, never a premature picker.
+                        BootSkeleton()
+                            .accessibilityIdentifier("home-boot")
+                            .padding(.top, 8)
                     }
                 } else if let queryModel {
                     HomeHeroView(model: realtimeModel)
@@ -39,6 +33,7 @@ struct HomeOverviewTab: View {
                         ReportStateView(
                             state: overviewModel.dashboard.overview.state,
                             onRetry: { Task { await overviewModel.refresh() } },
+                            skeleton: { MetricCardsSkeleton() },
                             content: { HomeMetricCards(overview: $0.value, trend: overviewModel.dashboard.trend.state.displayable?.value) }
                         )
                         MetricPickerView(model: overviewModel)
@@ -46,6 +41,7 @@ struct HomeOverviewTab: View {
                             ReportStateView(
                                 state: overviewModel.dashboard.series.state,
                                 onRetry: { Task { await overviewModel.refresh() } },
+                                skeleton: { ChartSkeleton() },
                                 content: {
                                     SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric, period: effective.period, periodDate: effective.periodDate, timeZone: effective.timeZone)
                                 }

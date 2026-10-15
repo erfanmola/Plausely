@@ -171,8 +171,12 @@ struct SitePickerView: View {
                 .background(HomeStyle.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             if selection.sitesLoading, selection.sites.isEmpty {
-                SkeletonBlocks(rows: 4, rowHeight: 56)
-                    .accessibilityIdentifier("site-picker-loading")
+                VStack(spacing: 2) {
+                    ForEach(0 ..< 4, id: \.self) { _ in
+                        SiteRowSkeleton()
+                    }
+                }
+                .accessibilityIdentifier("site-picker-loading")
             } else if let failure = selection.sitesError, selection.sites.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Couldn't load sites.", systemImage: "exclamationmark.triangle")

@@ -89,12 +89,16 @@ public struct OverviewContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             ReportStateView(state: model.dashboard.overview.state, onRetry: {
                 Task { await model.refresh() }
+            }, skeleton: {
+                TopStatsSkeleton()
             }, content: {
                 TopStatsGrid(overview: $0.value, warnings: $0.warnings)
             })
             MetricPickerView(model: model)
             ReportStateView(state: model.dashboard.series.state, onRetry: {
                 Task { await model.refresh() }
+            }, skeleton: {
+                ChartSkeleton()
             }, content: {
                 SeriesChartView(series: $0.value, metric: model.selectedMetric, period: query.period, periodDate: query.periodDate, timeZone: query.timeZone)
             })

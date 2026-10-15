@@ -757,7 +757,7 @@ public struct BreakdownSummaryView: View {
             }
             switch model.state {
             case .idle, .loading where model.rows.isEmpty:
-                SkeletonBlocks(rows: 5, rowHeight: 22)
+                SummaryRowsSkeleton(rows: previewCount)
                     .accessibilityIdentifier("\(prefix)-summary-loading")
             case .failed where model.rows.isEmpty:
                 ContentUnavailableView {

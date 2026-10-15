@@ -5,18 +5,21 @@ import SwiftUI
 /// error/unsupported. A stale envelope stays visible beneath loading and
 /// failed states with an explicit stale marker; retry is always offered on
 /// failure. Accessibility identifiers are stable for UI tests.
-public struct ReportStateView<Value: Sendable, Content: View>: View {
+public struct ReportStateView<Value: Sendable, Content: View, Skeleton: View>: View {
     private let state: ReportLoadState<Value>
     private let onRetry: () -> Void
+    private let skeleton: () -> Skeleton
     private let content: (ReportEnvelope<Value>) -> Content
 
     public init(
         state: ReportLoadState<Value>,
         onRetry: @escaping () -> Void = {},
+        @ViewBuilder skeleton: @escaping () -> Skeleton,
         @ViewBuilder content: @escaping (ReportEnvelope<Value>) -> Content
     ) {
         self.state = state
         self.onRetry = onRetry
+        self.skeleton = skeleton
         self.content = content
     }
 
@@ -30,7 +33,7 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
                 VStack {
                     // Skeleton approximates loaded height so surfaces
                     // don't collapse and jump while reports reload.
-                    SkeletonBlocks(rows: 6, rowHeight: 22)
+                    skeleton()
                         .accessibilityIdentifier("report-loading")
                     if let stale {
                         staleBadge
@@ -83,5 +86,21 @@ public struct ReportStateView<Value: Sendable, Content: View>: View {
             .padding(.vertical, 4)
             .background(.quaternary, in: Capsule(style: .continuous))
             .accessibilityIdentifier("report-stale")
+    }
+}
+
+/// Back-compat constructor with the generic loading shimmer. Call sites
+/// with content-shaped skeletons use the full initializer instead.
+public extension ReportStateView where Skeleton == SkeletonBlocks {
+    init(
+        state: ReportLoadState<Value>,
+        onRetry: @escaping () -> Void = {},
+        @ViewBuilder content: @escaping (ReportEnvelope<Value>) -> Content
+    ) {
+        self.init(
+            state: state, onRetry: onRetry,
+            skeleton: { SkeletonBlocks(rows: 6, rowHeight: 22) },
+            content: content
+        )
     }
 }
