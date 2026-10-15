@@ -244,6 +244,7 @@ struct HomeGoalsTab: View {
 struct HomeSettingsTab: View {
     @Bindable var selection: SiteSelectionModel
     var onSignOut: (@MainActor (AccountRef) async throws -> Void)?
+    var onReplayIntro: (() -> Void)?
 
     var body: some View {
         ScrollView {
@@ -289,6 +290,10 @@ struct HomeSettingsTab: View {
                            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
                         {
                             LabeledContent("Version", value: "\(version) (\(build))")
+                        }
+                        if onReplayIntro != nil {
+                            Button("Show introduction") { onReplayIntro?() }
+                                .accessibilityIdentifier("settings-replay-intro")
                         }
                     }
                 }

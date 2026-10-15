@@ -142,7 +142,24 @@ private extension FlakyStore {
     func setFail() { fail = true }
 }
 
-@Suite("site pinning")
+@Suite("onboarding state")
+@MainActor
+struct OnboardingStoreTests {
+    private func ephemeral() -> UserDefaults {
+        let suite = UserDefaults(suiteName: "plausely-onboarding-tests")!
+        suite.removePersistentDomain(forName: "plausely-onboarding-tests")
+        return suite
+    }
+
+    @Test("intro shows once, then stays seen")
+    func seenOnce() {
+        let defaults = ephemeral()
+        var first = OnboardingStore(defaults: defaults)
+        #expect(!first.hasSeen)
+        first.hasSeen = true
+        #expect(OnboardingStore(defaults: defaults).hasSeen)
+    }
+}
 @MainActor
 struct SitePinningTests {
     private func ephemeral() -> UserDefaults {

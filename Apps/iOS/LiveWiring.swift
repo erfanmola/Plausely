@@ -590,6 +590,8 @@ struct LiveRootView: View {
     @State private var signOutError: String?
     @State private var showingSignOutError = false
     @State private var demoMode = false
+    @State private var hasSeenOnboarding = OnboardingStore().hasSeen
+    @State private var showingIntro = false
 
     init() {
         let hub = self.hub
@@ -600,7 +602,12 @@ struct LiveRootView: View {
 
     var body: some View {
         Group {
-            if demoMode {
+            if !hasSeenOnboarding, !OnboardingStore.suppressedForTests {
+                OnboardingView {
+                    OnboardingStore().hasSeen = true
+                    hasSeenOnboarding = true
+                }
+            } else if demoMode {
                 DemoRootView { demoMode = false }
             } else if !accountsLoaded {
                 ProgressView(widgetDestination.map { "Loading \($0.domain)…" } ?? "Loading instances…")
@@ -663,9 +670,13 @@ struct LiveRootView: View {
                         return try? await hub.series(fixed, today: Date()).value
                     },
                     widgetDestination: widgetDestination,
-                    onWidgetDestinationHandled: { widgetDestination = nil }
+                    onWidgetDestinationHandled: { widgetDestination = nil },
+                    onReplayIntro: { showingIntro = true }
                 )
             }
+        }
+        .fullScreenCover(isPresented: $showingIntro) {
+            OnboardingView { showingIntro = false }
         }
         .task { await refreshAccounts() }
         .onOpenURL { url in widgetDestination = WidgetSiteDestination(url: url) }

@@ -228,6 +228,8 @@ public struct SeriesChartView: View {
     private let points: [SeriesPoint]
     private let xPositions: [Double]
     private let series: TimeSeries
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var revealed = false
 
     public init(series: TimeSeries, metric: MetricID, period: Period, periodDate: Date? = nil, timeZone: TimeZone) {
         self.metric = metric
@@ -480,6 +482,8 @@ public struct SeriesChartView: View {
             }
             .chartYScale(domain: 0...dayYMaximum)
             .frame(minHeight: 150)
+            .opacity(revealed || reduceMotion ? 1 : 0)
+            .offset(y: revealed || reduceMotion ? 0 : 10)
             .accessibilityIdentifier("series-chart")
             .accessibilityLabel("\(MetricID.descriptor(for: metric).displayName) chart, \(visiblePoints.count) buckets")
             .accessibilityChartDescriptor(SeriesChartDescriptor(
@@ -543,9 +547,28 @@ public struct SeriesChartView: View {
                 clock = Date()
             }
         }
-        .onChange(of: metric) { _, _ in selection = nil }
-        .onChange(of: period) { _, _ in selection = nil }
-        .onChange(of: periodDate) { _, _ in selection = nil }
+        .onChange(of: metric) { _, _ in selection = nil; replayReveal() }
+        .onChange(of: period) { _, _ in selection = nil; replayReveal() }
+        .onChange(of: periodDate) { _, _ in selection = nil; replayReveal() }
+        .onAppear {
+            if reduceMotion {
+                revealed = true
+            } else {
+                withAnimation(.smooth(duration: 0.5)) { revealed = true }
+            }
+        }
+    }
+
+    /// Replays the draw-in when the series identity changes (metric or
+    /// period switch). The re-reveal hops a runloop turn so the reset
+    /// paints before animating back. Polls keep bucket identity and
+    /// never retrigger.
+    private func replayReveal() {
+        guard !reduceMotion else { return }
+        revealed = false
+        Task { @MainActor in
+            withAnimation(.smooth(duration: 0.5)) { revealed = true }
+        }
     }
 
     /// VoiceOver chart content: every bucket as an explorable data point,

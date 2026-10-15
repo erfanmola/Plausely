@@ -54,6 +54,8 @@ public struct HomeRootView: View {
     private let preferences: SitePreferences
     private let widgetDestination: WidgetSiteDestination?
     private let onWidgetDestinationHandled: () -> Void
+    /// Replays the introduction from Settings. Defaults to hidden.
+    private let onReplayIntro: (() -> Void)?
     @State private var generation: UInt64 = 0
     @State private var handledWidgetDestination: WidgetSiteDestination?
     @State private var applyingWidgetDestination: WidgetSiteDestination?
@@ -77,7 +79,8 @@ public struct HomeRootView: View {
         sparkline: ((SiteRef, AccountID) async -> TimeSeries?)? = nil,
         preferences: SitePreferences = SitePreferences(),
         widgetDestination: WidgetSiteDestination? = nil,
-        onWidgetDestinationHandled: @escaping () -> Void = {}
+        onWidgetDestinationHandled: @escaping () -> Void = {},
+        onReplayIntro: (() -> Void)? = nil
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -96,6 +99,7 @@ public struct HomeRootView: View {
         self.preferences = preferences
         self.widgetDestination = widgetDestination
         self.onWidgetDestinationHandled = onWidgetDestinationHandled
+        self.onReplayIntro = onReplayIntro
     }
 
     public var body: some View {
@@ -120,6 +124,7 @@ public struct HomeRootView: View {
         .onChange(of: selectedTab) { _, _ in
             updateRealtimeTick()
         }
+        .sensoryFeedback(.selection, trigger: selectedTab)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 Task { await reloadTodayIfNeeded() }
@@ -174,7 +179,7 @@ public struct HomeRootView: View {
                 overviewModel: overviewModel, realtimeModel: realtimeModel,
                 sparkline: sparkline
             )
-            .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis") }
+            .tabItem { Label("Overview", systemImage: "chart.line.uptrend.xyaxis").symbolEffect(.bounce, value: selectedTab) }
             .tag(Tab.overview)
             HomeBreakdownsTab(
                 queryModel: queryModel,
@@ -188,17 +193,17 @@ public struct HomeRootView: View {
                 onExport: onExport,
                 isActive: selectedTab == .breakdowns
             )
-            .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle") }
+            .tabItem { Label("Breakdowns", systemImage: "list.bullet.rectangle").symbolEffect(.bounce, value: selectedTab) }
             .tag(Tab.breakdowns)
             HomeGoalsTab(
                 queryModel: queryModel, goalsModel: goalsModel,
                 childFactory: childFactory, onFilter: filterAction,
                 isActive: selectedTab == .goals
             )
-            .tabItem { Label("Goals", systemImage: "target") }
+            .tabItem { Label("Goals", systemImage: "target").symbolEffect(.bounce, value: selectedTab) }
             .tag(Tab.goals)
-            HomeSettingsTab(selection: selection, onSignOut: onSignOut)
-                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+            HomeSettingsTab(selection: selection, onSignOut: onSignOut, onReplayIntro: onReplayIntro)
+                .tabItem { Label("Settings", systemImage: "gearshape.fill").symbolEffect(.bounce, value: selectedTab) }
                 .tag(Tab.settings)
         }
     }
@@ -213,9 +218,13 @@ public struct HomeRootView: View {
                 set: { if let tab = $0 { selectedTab = tab } }
             )) {
                 Label("Overview", systemImage: "chart.line.uptrend.xyaxis").tag(Tab.overview)
+                    .symbolEffect(.bounce, value: selectedTab)
                 Label("Breakdowns", systemImage: "list.bullet.rectangle").tag(Tab.breakdowns)
+                    .symbolEffect(.bounce, value: selectedTab)
                 Label("Goals", systemImage: "target").tag(Tab.goals)
+                    .symbolEffect(.bounce, value: selectedTab)
                 Label("Settings", systemImage: "gearshape.fill").tag(Tab.settings)
+                    .symbolEffect(.bounce, value: selectedTab)
             }
             .navigationTitle("Plausely")
         } detail: {
@@ -247,7 +256,7 @@ public struct HomeRootView: View {
                         isActive: selectedTab == .goals
                     )
                 case .settings:
-                    HomeSettingsTab(selection: selection, onSignOut: onSignOut)
+                    HomeSettingsTab(selection: selection, onSignOut: onSignOut, onReplayIntro: onReplayIntro)
                 }
             }
         }
