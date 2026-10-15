@@ -63,9 +63,39 @@ public struct SkeletonBlocks: View {
     }
 }
 
+/// Platform line heights backing skeleton bars. iOS text runs slightly
+/// taller than macOS for the same styles (verified: 114pt vs 89pt metric
+/// cards on live captures); one shared constant would shift one platform
+/// on every load, so each floor carries its own measured numbers.
+enum Skel {
+#if os(iOS)
+    static let heroNumber: CGFloat = 68
+    static let heroLabel: CGFloat = 24
+    static let cardTitle: CGFloat = 20
+    static let cardValue: CGFloat = 36
+    static let cardComparison: CGFloat = 18
+    static let rowDomain: CGFloat = 22
+    static let rowMeta: CGFloat = 16
+    static let bootTitle: CGFloat = 26
+    static let bootSubtitle: CGFloat = 19
+    static let chartCaption: CGFloat = 14
+#else
+    static let heroNumber: CGFloat = 66
+    static let heroLabel: CGFloat = 22
+    static let cardTitle: CGFloat = 16
+    static let cardValue: CGFloat = 30
+    static let cardComparison: CGFloat = 15
+    static let rowDomain: CGFloat = 18
+    static let rowMeta: CGFloat = 14
+    static let bootTitle: CGFloat = 24
+    static let bootSubtitle: CGFloat = 16
+    static let chartCaption: CGFloat = 13
+#endif
+}
+
 /// One gray shimmer bar. Widths are representative (real text widths are
-/// unknowable before load); heights, radii, and positions match the
-/// component the bar stands in for.
+/// unknowable before load); heights come from `Skel` platform line
+/// heights so bars match the text rows they stand in for.
 struct SkeletonBar: View {
     private let width: CGFloat?
     private let height: CGFloat
@@ -98,11 +128,11 @@ public struct HeroSkeleton: View {
                     .fill(.secondary.opacity(0.16))
                     .frame(width: 12, height: 12)
                     .frame(width: 30, height: 30)
-                SkeletonBar(width: 116, height: 68, cornerRadius: 12)
+                SkeletonBar(width: 116, height: Skel.heroNumber, cornerRadius: 12)
                 Color.clear
                     .frame(width: 30, height: 30)
             }
-            SkeletonBar(width: 150, height: 24)
+            SkeletonBar(width: 150, height: Skel.heroLabel)
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityHidden(true)
@@ -121,9 +151,9 @@ public struct MetricCardsSkeleton: View {
                 HStack(spacing: 12) {
                     ForEach(0 ..< 2, id: \.self) { _ in
                         VStack(spacing: 6) {
-                            SkeletonBar(width: 90, height: 20)
-                            SkeletonBar(width: 110, height: 36)
-                            SkeletonBar(width: 70, height: 18)
+                            SkeletonBar(width: 90, height: Skel.cardTitle)
+                            SkeletonBar(width: 110, height: Skel.cardValue)
+                            SkeletonBar(width: 70, height: Skel.cardComparison)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
@@ -155,7 +185,7 @@ public struct ChartSkeleton: View {
             SkeletonBar(height: 150, cornerRadius: 12)
                 .frame(minHeight: 150)
             if reserveCaption {
-                Color.clear.frame(height: 14)
+                Color.clear.frame(height: Skel.chartCaption)
             }
         }
         .accessibilityHidden(true)
@@ -197,8 +227,8 @@ public struct SiteRowSkeleton: View {
             HStack(spacing: 12) {
                 SkeletonBar(width: 40, height: 40, cornerRadius: 12)
                 VStack(alignment: .leading, spacing: 2) {
-                    SkeletonBar(width: 170, height: 22)
-                    SkeletonBar(width: 110, height: 16)
+                    SkeletonBar(width: 170, height: Skel.rowDomain)
+                    SkeletonBar(width: 110, height: Skel.rowMeta)
                 }
                 Spacer(minLength: 8)
                 Circle()
@@ -246,8 +276,8 @@ public struct BootSkeleton: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SkeletonBar(width: 170, height: 26)
-            SkeletonBar(width: 240, height: 19)
+            SkeletonBar(width: 170, height: Skel.bootTitle)
+            SkeletonBar(width: 240, height: Skel.bootSubtitle)
             ForEach(0 ..< 4, id: \.self) { _ in
                 SiteRowSkeleton()
             }
