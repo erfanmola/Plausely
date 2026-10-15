@@ -160,7 +160,7 @@ public struct TopStatsGrid: View {
                 if let change = changeText(stat.change) {
                     Text(change)
                         .font(.caption)
-                        .foregroundStyle(changeDirectionColor(stat.change))
+                        .foregroundStyle(changeDirectionColor(stat.change, for: stat.metric))
                         .accessibilityIdentifier("overview-change-\(stat.metric.rawValue)")
                 }
                 if let comparison = stat.comparisonValue {

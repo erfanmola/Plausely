@@ -134,6 +134,20 @@ struct OverviewTests {
         #expect(DashboardUI.changeText(0) == "■ 0% vs comparison")
     }
 
+    @Test("lower is better for bounce, exit rate, and position")
+    func changeSentimentCases() {
+        #expect(ChangeSentiment.of(nil, for: .visitors) == .neutral)
+        #expect(ChangeSentiment.of(0, for: .visitors) == .neutral)
+        #expect(ChangeSentiment.of(12, for: .visitors) == .positive)
+        #expect(ChangeSentiment.of(-5, for: .visits) == .negative)
+        #expect(ChangeSentiment.of(-4, for: .bounceRate) == .positive)
+        #expect(ChangeSentiment.of(4, for: .bounceRate) == .negative)
+        #expect(ChangeSentiment.of(-8, for: .exitRate) == .positive)
+        #expect(ChangeSentiment.of(-2, for: .position) == .positive)
+        #expect(ChangeSentiment.of(2, for: .position) == .negative)
+        #expect(ChangeSentiment.of(25, for: .ctr) == .positive)
+    }
+
     @Test("mock series omits comparison without a comparison mode")
     func mockComparisonGuard() async throws {
         let off = try await MockOverviewProviders.series(baseQuery(), frozenToday).value

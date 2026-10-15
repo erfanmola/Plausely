@@ -135,7 +135,7 @@ public struct HomeMetricCards: View {
                 if let change = shortChangeText(stat.change) {
                     Text(change)
                         .font(.callout)
-                        .foregroundStyle(changeDirectionColor(stat.change))
+                        .foregroundStyle(changeDirectionColor(stat.change, for: stat.metric))
                         .accessibilityIdentifier("overview-change-\(stat.metric.rawValue)")
                 }
             }

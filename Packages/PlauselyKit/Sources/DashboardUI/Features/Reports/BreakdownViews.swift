@@ -534,7 +534,7 @@ struct BreakdownChangeBadge: View {
         {
             Text(short)
                 .font(.caption2)
-                .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil))
+                .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil, for: metric))
                 .accessibilityIdentifier(identifier)
                 .accessibilityLabel(full)
         }
@@ -1359,7 +1359,7 @@ public struct BreakdownReportView: View {
                                 if let short = shortChangeText(row.change[metric] ?? nil) {
                                     Text(short)
                                         .font(.caption2)
-                                        .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil))
+                                        .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil, for: metric))
                                 }
                             }
                             .gridColumnAlignment(.trailing)
@@ -1490,7 +1490,7 @@ public struct BreakdownRowDetailView: View {
                             "\(MetricID.descriptor(for: metric).displayName) change",
                             value: short
                         )
-                        .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil))
+                        .foregroundStyle(changeDirectionColor(row.change[metric] ?? nil, for: metric))
                         .accessibilityIdentifier("\(prefix)-detail-\(metric.rawValue)-change")
                     }
                 }

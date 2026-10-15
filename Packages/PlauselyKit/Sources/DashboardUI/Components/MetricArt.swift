@@ -53,14 +53,32 @@ func reportSymbolName(for kind: ReportKind) -> String {
     }
 }
 
-/// Change direction color: green for growth, red for decline, secondary for
-/// flat or uncomputable. Arrows and signs always carry the direction too —
-/// color is never the only signal (MET-04).
-func changeDirectionColor(_ change: Int?) -> Color {
-    guard let change else { return .secondary }
-    if change > 0 { return .green }
-    if change < 0 { return .red }
-    return .secondary
+/// Change sentiment for one metric's delta: growth is good except where
+/// lower is better (bounce/exit rates, search position). Arrows and signs
+/// always carry the direction too — color is never the only signal.
+enum ChangeSentiment {
+    case positive, negative, neutral
+
+    static func of(_ change: Int?, for metric: MetricID) -> ChangeSentiment {
+        guard let change, change != 0 else { return .neutral }
+        let inverted = switch metric {
+        case .bounceRate, .exitRate, .position: true
+        default: false
+        }
+        let good = inverted ? change < 0 : change > 0
+        return good ? .positive : .negative
+    }
+}
+
+/// Change direction color: green for improvement, red for decline,
+/// secondary for flat or uncomputable. Arrows and signs always carry the
+/// direction too — color is never the only signal (MET-04).
+func changeDirectionColor(_ change: Int?, for metric: MetricID) -> Color {
+    switch ChangeSentiment.of(change, for: metric) {
+    case .positive: return .green
+    case .negative: return .red
+    case .neutral: return .secondary
+    }
 }
 /// Small tinted tile for a metric glyph. Decorative; always hidden from
 /// VoiceOver by the caller.
