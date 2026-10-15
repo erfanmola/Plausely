@@ -98,7 +98,7 @@ public struct OverviewContentView: View {
             ReportStateView(state: model.dashboard.series.state, onRetry: {
                 Task { await model.refresh() }
             }, skeleton: {
-                ChartSkeleton()
+                ChartSkeleton(reserveCaption: query.period == .day && query.periodDate == nil)
             }, content: {
                 SeriesChartView(series: $0.value, metric: model.selectedMetric, period: query.period, periodDate: query.periodDate, timeZone: query.timeZone)
             })
@@ -491,11 +491,15 @@ public struct SeriesChartView: View {
             ))
             .sensoryFeedback(.selection, trigger: selectedPoint?.index)
             }
-            if !todayEstimatePoints.isEmpty {
+            if isToday {
+                // Reserved on Today whether or not yesterday yields an
+                // estimate: its late arrival must not push content down.
                 Text("Dotted line estimates the rest of today from yesterday.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
+                    .opacity(todayEstimatePoints.isEmpty ? 0 : 1)
+                    .accessibilityHidden(todayEstimatePoints.isEmpty)
             }
             if let detail = selectionDetail {
                 Text(detail)

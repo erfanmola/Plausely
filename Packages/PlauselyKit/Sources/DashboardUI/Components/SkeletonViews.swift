@@ -98,7 +98,7 @@ public struct HeroSkeleton: View {
                     .fill(.secondary.opacity(0.16))
                     .frame(width: 12, height: 12)
                     .frame(width: 30, height: 30)
-                SkeletonBar(width: 116, height: 64, cornerRadius: 12)
+                SkeletonBar(width: 116, height: 68, cornerRadius: 12)
                 Color.clear
                     .frame(width: 30, height: 30)
             }
@@ -121,9 +121,9 @@ public struct MetricCardsSkeleton: View {
                 HStack(spacing: 12) {
                     ForEach(0 ..< 2, id: \.self) { _ in
                         VStack(spacing: 6) {
-                            SkeletonBar(width: 90, height: 18)
-                            SkeletonBar(width: 110, height: 34)
-                            SkeletonBar(width: 70, height: 14)
+                            SkeletonBar(width: 90, height: 20)
+                            SkeletonBar(width: 110, height: 36)
+                            SkeletonBar(width: 70, height: 18)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
@@ -140,14 +140,25 @@ public struct MetricCardsSkeleton: View {
 }
 
 /// Series-chart skeleton: a 150pt block matching the chart frame inside
-/// its card, so the card never collapses while the series loads.
+/// its card, so the card never collapses while the series loads. The
+/// Today estimate caption reserves its slot when requested, so its late
+/// arrival never pushes content down.
 public struct ChartSkeleton: View {
-    public init() {}
+    private let reserveCaption: Bool
+
+    public init(reserveCaption: Bool = false) {
+        self.reserveCaption = reserveCaption
+    }
 
     public var body: some View {
-        SkeletonBar(height: 150, cornerRadius: 12)
-            .frame(minHeight: 150)
-            .accessibilityHidden(true)
+        VStack(alignment: .trailing, spacing: 8) {
+            SkeletonBar(height: 150, cornerRadius: 12)
+                .frame(minHeight: 150)
+            if reserveCaption {
+                Color.clear.frame(height: 14)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -186,8 +197,8 @@ public struct SiteRowSkeleton: View {
             HStack(spacing: 12) {
                 SkeletonBar(width: 40, height: 40, cornerRadius: 12)
                 VStack(alignment: .leading, spacing: 2) {
-                    SkeletonBar(width: 170, height: 18)
-                    SkeletonBar(width: 110, height: 14)
+                    SkeletonBar(width: 170, height: 22)
+                    SkeletonBar(width: 110, height: 16)
                 }
                 Spacer(minLength: 8)
                 Circle()
@@ -216,10 +227,10 @@ public struct TopStatsSkeleton: View {
                 HStack(spacing: 10) {
                     SkeletonBar(width: 34, height: 34, cornerRadius: 10)
                     VStack(alignment: .leading, spacing: 2) {
-                        SkeletonBar(width: 100, height: 16)
-                        SkeletonBar(width: 130, height: 28)
-                        SkeletonBar(width: 80, height: 14)
-                        SkeletonBar(width: 90, height: 14)
+                        SkeletonBar(width: 100, height: 15)
+                        SkeletonBar(width: 130, height: 22)
+                        SkeletonBar(width: 80, height: 15)
+                        SkeletonBar(width: 90, height: 15)
                     }
                 }
             }
@@ -235,8 +246,8 @@ public struct BootSkeleton: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            SkeletonBar(width: 170, height: 28)
-            SkeletonBar(width: 240, height: 18)
+            SkeletonBar(width: 170, height: 26)
+            SkeletonBar(width: 240, height: 19)
             ForEach(0 ..< 4, id: \.self) { _ in
                 SiteRowSkeleton()
             }

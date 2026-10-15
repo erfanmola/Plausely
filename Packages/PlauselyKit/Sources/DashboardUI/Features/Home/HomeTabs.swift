@@ -41,7 +41,7 @@ struct HomeOverviewTab: View {
                             ReportStateView(
                                 state: overviewModel.dashboard.series.state,
                                 onRetry: { Task { await overviewModel.refresh() } },
-                                skeleton: { ChartSkeleton() },
+                                skeleton: { ChartSkeleton(reserveCaption: effective.period == .day && effective.periodDate == nil) },
                                 content: {
                                     SeriesChartView(series: $0.value, metric: overviewModel.selectedMetric, period: effective.period, periodDate: effective.periodDate, timeZone: effective.timeZone)
                                 }

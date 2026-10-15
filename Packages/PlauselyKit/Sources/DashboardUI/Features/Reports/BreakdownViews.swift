@@ -829,6 +829,14 @@ public struct BreakdownSummaryView: View {
                                 onCloseSheet: { showingFull = false }
                             )
                         }
+                } else if case .loading = model.state {
+                    // Invisible slot: the button legitimately arrives with
+                    // the rows, and its appearance must not push the cards
+                    // below down.
+                    Button("Show all \(model.definition.title.lowercased())") {}
+                        .disabled(true)
+                        .opacity(0)
+                        .accessibilityHidden(true)
                 }
                 }
             }
