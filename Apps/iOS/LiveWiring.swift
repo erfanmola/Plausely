@@ -516,7 +516,7 @@ struct LoginView: View {
                 Button(busy ? "Signing in…" : (useSharedLink ? "Open Shared View" : "Sign In")) {
                     Task { await signIn() }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(TelegramPrimaryButtonStyle())
                 .disabled(busy || (useSharedLink ? sharedURL.isEmpty : (server.isEmpty || email.isEmpty || password.isEmpty)))
                 .accessibilityIdentifier("login-submit")
                 .animation(.snappy, value: busy)
@@ -593,6 +593,7 @@ struct LiveRootView: View {
     @State private var hasSeenOnboarding = OnboardingStore().hasSeen
     @State private var showingIntro = false
     @State private var appLock = AppLockModel()
+    @State private var appearance = AppAppearance.shared
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -683,6 +684,8 @@ struct LiveRootView: View {
         .fullScreenCover(isPresented: $showingIntro) {
             OnboardingView { showingIntro = false }
         }
+        .tint(appearance.accent.top)
+        .preferredColorScheme(appearance.theme.scheme)
         .task { await refreshAccounts() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {

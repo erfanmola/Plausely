@@ -39,6 +39,8 @@ public struct DemoRootView: View {
                 onExport: { _ in (filename: "mock-export.zip", data: MockExportProviders.payload) }
             )
         }
+        .tint(AppAppearance.shared.accent.top)
+        .preferredColorScheme(AppAppearance.shared.theme.scheme)
         .accessibilityIdentifier("demo-root")
     }
 }

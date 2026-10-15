@@ -1,16 +1,12 @@
 import AnalyticsCore
 import Charts
 import SwiftUI
-#if os(iOS)
-import UIKit
-#else
-import AppKit
-#endif
 
-/// Domain monogram: deterministic Telegram-style gradient tile with the
-/// site initial in white. The hue derives from the domain hash, so every
-/// site keeps a stable identity across picker, menus, and settings.
-/// Decorative; rows carry the accessible names.
+/// Domain monogram: Telegram-style gradient tile with the site initial
+/// in white. The gradient comes from a fixed curated set indexed by a
+/// STABLE string hash — every site keeps the same identity on every
+/// launch (Swift's `hashValue` is salted per process and must never
+/// drive artwork). Decorative; rows carry the accessible names.
 struct SiteMonogram: View {
     let domain: String
 
@@ -22,7 +18,7 @@ struct SiteMonogram: View {
             .frame(width: 40, height: 40)
             .background(
                 LinearGradient(
-                    colors: [tint, tint.adjusted(hue: 0.07)],
+                    colors: [AvatarPalette.top(index), AvatarPalette.bottom(index)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
@@ -35,23 +31,41 @@ struct SiteMonogram: View {
         domain.first(where: { $0.isLetter || $0.isNumber }).map { String($0).uppercased() } ?? "•"
     }
 
-    private var tint: Color {
-        let hash = abs(domain.lowercased().hashValue % 360)
-        return Color(hue: Double(hash) / 360, saturation: 0.58, brightness: 0.88)
+    private var index: Int {
+        AvatarPalette.index(for: domain)
     }
 }
 
-private extension Color {
-    /// Hue-shifted copy for two-stop avatar gradients.
-    func adjusted(hue delta: Double) -> Color {
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        #if os(iOS)
-        UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-        return Color(hue: Double(h + CGFloat(delta)).truncatingRemainder(dividingBy: 1), saturation: Double(s), brightness: Double(b))
-        #else
-        NSColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-        return Color(hue: Double(h + CGFloat(delta)).truncatingRemainder(dividingBy: 1), saturation: Double(s), brightness: Double(b))
-        #endif
+/// Fixed Telegram-family avatar gradients. Curated pairs (never random
+/// hues); the domain maps here through a stable FNV-1a hash.
+enum AvatarPalette {
+    private static let pairs: [(top: (Double, Double, Double), bottom: (Double, Double, Double))] = [
+        ((1.00, 0.36, 0.42), (0.91, 0.24, 0.33)), // red
+        ((1.00, 0.63, 0.26), (0.96, 0.44, 0.10)), // orange
+        ((0.61, 0.35, 0.96), (0.49, 0.23, 0.93)), // purple
+        ((0.20, 0.78, 0.35), (0.12, 0.66, 0.29)), // green
+        ((0.20, 0.68, 0.90), (0.04, 0.52, 1.00)), // blue
+        ((1.00, 0.22, 0.37), (0.85, 0.11, 0.38)), // pink
+        ((0.13, 0.80, 0.78), (0.05, 0.65, 0.70)), // teal
+    ]
+
+    static func index(for domain: String) -> Int {
+        var hash: UInt64 = 14_695_937_175_489_373_137
+        for byte in domain.lowercased().utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 1_099_511_628_211
+        }
+        return Int(hash % UInt64(pairs.count))
+    }
+
+    static func top(_ index: Int) -> Color {
+        let c = pairs[index % pairs.count].top
+        return Color(red: c.0, green: c.1, blue: c.2)
+    }
+
+    static func bottom(_ index: Int) -> Color {
+        let c = pairs[index % pairs.count].bottom
+        return Color(red: c.0, green: c.1, blue: c.2)
     }
 }
 

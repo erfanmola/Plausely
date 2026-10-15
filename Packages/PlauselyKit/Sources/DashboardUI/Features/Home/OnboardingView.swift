@@ -103,8 +103,8 @@ public struct OnboardingView: View {
                     onDone()
                 }
             })
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .buttonStyle(TelegramPrimaryButtonStyle())
+            .padding(.horizontal, 24)
             .padding(.vertical, 20)
             .accessibilityIdentifier(page < 3 ? "onboarding-next" : "onboarding-done")
             .sensoryFeedback(.selection, trigger: page)

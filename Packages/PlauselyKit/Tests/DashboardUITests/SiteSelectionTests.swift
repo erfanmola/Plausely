@@ -160,6 +160,33 @@ struct OnboardingStoreTests {
         #expect(OnboardingStore(defaults: defaults).hasSeen)
     }
 }
+
+@Suite("appearance choices")
+@MainActor
+struct AppAppearanceTests {
+    private func ephemeral() -> UserDefaults {
+        let suite = UserDefaults(suiteName: "plausely-appearance-tests")!
+        suite.removePersistentDomain(forName: "plausely-appearance-tests")
+        return suite
+    }
+
+    @Test("accent and theme persist with blue/system defaults")
+    func persistence() {
+        let defaults = ephemeral()
+        let first = AppAppearance(defaults: defaults)
+        #expect(first.accent == .blue)
+        #expect(first.theme == .system)
+        first.accent = .purple
+        first.theme = .dark
+        let second = AppAppearance(defaults: defaults)
+        #expect(second.accent == .purple)
+        #expect(second.theme == .dark)
+        #expect(AppTheme.dark.scheme == .dark)
+        #expect(AppTheme.system.scheme == nil)
+    }
+}
+
+@Suite("site pinning")
 @MainActor
 struct SitePinningTests {
     private func ephemeral() -> UserDefaults {

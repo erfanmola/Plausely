@@ -358,6 +358,19 @@ struct HomeSettingsTab: View {
                     }
                     HomeCard {
                         VStack(alignment: .leading, spacing: 8) {
+                            HomeCardTitle(title: "Appearance")
+                            SettingsRow(
+                                icon: "paintpalette.fill",
+                                tint: .blue,
+                                title: "Theme & accent",
+                                value: AppAppearance.shared.theme.title,
+                                identifier: "settings-appearance",
+                                destination: { AppAppearanceView() }
+                            )
+                        }
+                    }
+                    HomeCard {
+                        VStack(alignment: .leading, spacing: 8) {
                             HomeCardTitle(title: "About")
                             LabeledContent("Client", value: "Plausely")
                             LabeledContent("Dashboard target", value: "CE 3.2.1")

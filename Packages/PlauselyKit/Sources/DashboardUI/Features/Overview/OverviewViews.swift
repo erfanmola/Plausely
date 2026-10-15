@@ -231,6 +231,10 @@ public struct SeriesChartView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var revealed = false
 
+    /// Actual-series color follows the app accent; the dotted estimate
+    /// keeps its own blue so the two never merge under any accent.
+    private var tint: Color { AppAppearance.shared.accent.top }
+
     public init(series: TimeSeries, metric: MetricID, period: Period, periodDate: Date? = nil, timeZone: TimeZone) {
         self.metric = metric
         self.period = period
@@ -354,7 +358,7 @@ public struct SeriesChartView: View {
             )
             .foregroundStyle(
                 LinearGradient(
-                    colors: [.blue.opacity(0.35), .blue.opacity(0.03)],
+                    colors: [tint.opacity(0.35), tint.opacity(0.03)],
                     startPoint: .top, endPoint: .bottom
                 )
             )
@@ -365,7 +369,7 @@ public struct SeriesChartView: View {
                     series: .value("Series", "Final hour")
                 )
                 .interpolationMethod(.linear)
-                .foregroundStyle(.blue)
+                .foregroundStyle(tint)
             }
         }
     }
@@ -410,7 +414,7 @@ public struct SeriesChartView: View {
                         )
                         .interpolationMethod(.catmullRom)
                     }
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(tint)
                     ForEach(run.points, id: \.index) { point in
                         AreaMark(
                             x: .value("Bucket", xPosition(for: point)),
@@ -420,7 +424,7 @@ public struct SeriesChartView: View {
                     }
                     .foregroundStyle(
                         LinearGradient(
-                            colors: [.blue.opacity(0.35), .blue.opacity(0.03)],
+                            colors: [tint.opacity(0.35), tint.opacity(0.03)],
                             startPoint: .top, endPoint: .bottom
                         )
                     )
@@ -446,7 +450,7 @@ public struct SeriesChartView: View {
                             .foregroundStyle(.white)
                             .symbolSize(220)
                         PointMark(x: .value("Selected", selection), y: .value("Value", value))
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(tint)
                             .symbolSize(110)
                     }
                 }

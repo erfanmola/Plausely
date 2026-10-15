@@ -95,12 +95,11 @@ public struct PasscodeView: View {
             }
         }
         .background {
-            // Hardware keyboard path: invisible focused field mirrors the
-            // pad into the same entry state on both platforms.
+            // Hardware keyboard path (macOS only): an invisible focused
+            // field mirrors physical typing into the pad state. On iOS
+            // this would summon the software keyboard over the pad.
+#if os(macOS)
             TextField("", text: $entry)
-#if os(iOS)
-                .keyboardType(.numberPad)
-#endif
                 .focused($fieldFocused)
                 .frame(width: 1, height: 1)
                 .opacity(0.01)
@@ -110,6 +109,7 @@ public struct PasscodeView: View {
                     let digits = String(value.filter(\.isNumber).prefix(4))
                     if digits != value { entry = digits }
                 }
+#endif
         }
         .onChange(of: entry) { _, value in
             if value.count == 4 {
