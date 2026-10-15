@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock Plausely quickly and securely with Touch ID.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

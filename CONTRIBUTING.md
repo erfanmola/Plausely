@@ -10,6 +10,10 @@ Everything must stay green: package tests, both Debug builds, both UI
 suites, both Release builds. UI suites run in deterministic mock mode
 (`-plausely-mock-sites`); they never touch a real server.
 
+During development, verify only what changed: package tests for the
+touched target plus builds of the affected apps. The full gate stays
+for pre-commit and release checks, not every small edit.
+
 ## Rules that keep parity honest
 
 - **Server output wins.** Every value, column, label, and interaction must

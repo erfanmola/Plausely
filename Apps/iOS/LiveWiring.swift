@@ -592,6 +592,8 @@ struct LiveRootView: View {
     @State private var demoMode = false
     @State private var hasSeenOnboarding = OnboardingStore().hasSeen
     @State private var showingIntro = false
+    @State private var appLock = AppLockModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let hub = self.hub
@@ -621,8 +623,9 @@ struct LiveRootView: View {
                     }
                 }
             } else {
-                HomeRootView(
-                    directory: directory,
+                AppLockGate(model: appLock) {
+                    HomeRootView(
+                        directory: directory,
                     overviewLoader: { [hub] query, today in try await hub.overview(query, today: today) },
                     seriesLoader: { [hub] query, today in try await hub.series(query, today: today) },
                     breakdownLoader: { [hub] request, today in try await hub.breakdown(request, today: today) },
@@ -671,14 +674,21 @@ struct LiveRootView: View {
                     },
                     widgetDestination: widgetDestination,
                     onWidgetDestinationHandled: { widgetDestination = nil },
-                    onReplayIntro: { showingIntro = true }
+                    onReplayIntro: { showingIntro = true },
+                    appLock: appLock
                 )
+                }
             }
         }
         .fullScreenCover(isPresented: $showingIntro) {
             OnboardingView { showingIntro = false }
         }
         .task { await refreshAccounts() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                appLock.lock()
+            }
+        }
         .onOpenURL { url in widgetDestination = WidgetSiteDestination(url: url) }
         .alert("Couldn't sign out", isPresented: $showingSignOutError) {
             Button("OK", role: .cancel) {}

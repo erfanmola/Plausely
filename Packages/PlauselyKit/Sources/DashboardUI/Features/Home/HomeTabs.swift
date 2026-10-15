@@ -240,74 +240,151 @@ struct HomeGoalsTab: View {
     }
 }
 
+/// Telegram-style settings row: colorful rounded-square glyph, title,
+/// trailing gray value, chevron. Used for navigable settings entries.
+struct SettingsRow<Destination: View>: View {
+    private let icon: String
+    private let tint: Color
+    private let title: String
+    private let value: String?
+    private let identifier: String
+    private let destination: () -> Destination
+
+    init(
+        icon: String,
+        tint: Color,
+        title: String,
+        value: String? = nil,
+        identifier: String,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) {
+        self.icon = icon
+        self.tint = tint
+        self.title = title
+        self.value = value
+        self.identifier = identifier
+        self.destination = destination
+    }
+
+    var body: some View {
+        NavigationLink {
+            destination()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundStyle(.white)
+                    .frame(width: 30, height: 30)
+                    .background(tint.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                if let value {
+                    Text(value)
+                        .foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .bold()
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+    }
+}
+
 /// Settings tab: instances plus client facts.
 struct HomeSettingsTab: View {
     @Bindable var selection: SiteSelectionModel
     var onSignOut: (@MainActor (AccountRef) async throws -> Void)?
+    var appLock: AppLockModel?
     var onReplayIntro: (() -> Void)?
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                HomeCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HomeCardTitle(title: "Instances")
-                        if selection.accounts.isEmpty {
-                            ContentUnavailableView(
-                                "No instances configured",
-                                systemImage: "server.rack",
-                                description: Text("Sign in to an analytics instance to browse its sites.")
-                            )
-                            .accessibilityIdentifier("settings-no-instances")
-                        } else {
-                            ForEach(selection.accounts, id: \.id) { account in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(account.displayName)
-                                        Text(account.baseURL.absoluteString)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    Spacer(minLength: 8)
-                                    if onSignOut != nil {
-                                        Button("Sign Out", role: .destructive) {
-                                            Task { try? await onSignOut?(account) }
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    HomeCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HomeCardTitle(title: "Instances")
+                            if selection.accounts.isEmpty {
+                                ContentUnavailableView(
+                                    "No instances configured",
+                                    systemImage: "server.rack",
+                                    description: Text("Sign in to an analytics instance to browse its sites.")
+                                )
+                                .accessibilityIdentifier("settings-no-instances")
+                            } else {
+                                ForEach(selection.accounts, id: \.id) { account in
+                                    HStack(spacing: 12) {
+                                        SiteMonogram(domain: account.displayName)
+                                        VStack(alignment: .leading) {
+                                            Text(account.displayName)
+                                            Text(account.baseURL.absoluteString)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
                                         }
-                                        .accessibilityIdentifier("home-signout")
+                                        Spacer(minLength: 8)
+                                        if onSignOut != nil {
+                                            Button("Sign Out", role: .destructive) {
+                                                Task { try? await onSignOut?(account) }
+                                            }
+                                            .accessibilityIdentifier("home-signout")
+                                        }
                                     }
+                                    .accessibilityIdentifier("settings-account-\(account.displayName)")
                                 }
-                                .accessibilityIdentifier("settings-account-\(account.displayName)")
                             }
                         }
                     }
-                }
-                HomeCard {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HomeCardTitle(title: "About")
-                        LabeledContent("Client", value: "Plausely")
-                        LabeledContent("Dashboard target", value: "CE 3.2.1")
-                        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-                           let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
-                        {
-                            LabeledContent("Version", value: "\(version) (\(build))")
-                        }
-                        if onReplayIntro != nil {
-                            Button("Show introduction") { onReplayIntro?() }
-                                .accessibilityIdentifier("settings-replay-intro")
+                    if let appLock {
+                        HomeCard {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HomeCardTitle(title: "Security")
+                                SettingsRow(
+                                    icon: "lock.fill",
+                                    tint: .green,
+                                    title: "Passcode & Face ID",
+                                    value: appLock.isEnabled ? "On" : "Off",
+                                    identifier: "settings-applock",
+                                    destination: { AppLockSettingsView(model: appLock) }
+                                )
+                            }
                         }
                     }
+                    HomeCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HomeCardTitle(title: "About")
+                            LabeledContent("Client", value: "Plausely")
+                            LabeledContent("Dashboard target", value: "CE 3.2.1")
+                            if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+                               let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+                            {
+                                LabeledContent("Version", value: "\(version) (\(build))")
+                            }
+                            if onReplayIntro != nil {
+                                Button("Show introduction") { onReplayIntro?() }
+                                    .accessibilityIdentifier("settings-replay-intro")
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("settings-content")
+                    Spacer(minLength: 90)
                 }
-                .accessibilityIdentifier("settings-content")
-                Spacer(minLength: 90)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .navigationTitle("Settings")
+            .refreshable {
+                await selection.loadAccounts()
+            }
         }
         .accessibilityIdentifier("home-pane-settings")
         .task {
-            await selection.loadAccounts()
-        }
-        .refreshable {
             await selection.loadAccounts()
         }
     }

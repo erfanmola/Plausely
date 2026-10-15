@@ -236,9 +236,10 @@ public struct SiteRowSkeleton: View {
                     .frame(width: 21, height: 21)
                     .frame(minWidth: 44, minHeight: 44)
             }
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(.secondary.opacity(0.1))
                 .frame(height: 30)
+                .padding(.horizontal, 52)
         }
         .padding(.vertical, 4)
         .accessibilityHidden(true)

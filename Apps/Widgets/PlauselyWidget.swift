@@ -211,6 +211,12 @@ private enum WidgetReportLoader {
                   let record = try store.load(id: AccountID(rawValue: uuid)) else {
                 return failure(configuration, message: "Instance unavailable. Open Plausely to sign in again.", date: now)
             }
+            // An enabled app lock blanks widgets: they refresh in the
+            // background with no unlock path, so showing numbers would
+            // bypass the lock. The message says exactly that.
+            if AppLockStore.load() != nil {
+                return failure(configuration, message: "Plausely is locked. Unlock the app to refresh widgets.", date: now)
+            }
             let credentials = KeychainCredentialStore(
                 accessGroup: Bundle.main.infoDictionary?["PlauselyKeychainAccessGroup"] as? String
             )

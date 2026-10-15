@@ -56,6 +56,9 @@ public struct HomeRootView: View {
     private let onWidgetDestinationHandled: () -> Void
     /// Replays the introduction from Settings. Defaults to hidden.
     private let onReplayIntro: (() -> Void)?
+    /// App-lock model for the Security settings row. Nil hides the row
+    /// (mock roots, tests, and widget-less surfaces).
+    private let appLock: AppLockModel?
     @State private var generation: UInt64 = 0
     @State private var handledWidgetDestination: WidgetSiteDestination?
     @State private var applyingWidgetDestination: WidgetSiteDestination?
@@ -80,7 +83,8 @@ public struct HomeRootView: View {
         preferences: SitePreferences = SitePreferences(),
         widgetDestination: WidgetSiteDestination? = nil,
         onWidgetDestinationHandled: @escaping () -> Void = {},
-        onReplayIntro: (() -> Void)? = nil
+        onReplayIntro: (() -> Void)? = nil,
+        appLock: AppLockModel? = nil
     ) {
         _selection = State(initialValue: SiteSelectionModel(directory: directory))
         self.directory = directory
@@ -100,6 +104,7 @@ public struct HomeRootView: View {
         self.widgetDestination = widgetDestination
         self.onWidgetDestinationHandled = onWidgetDestinationHandled
         self.onReplayIntro = onReplayIntro
+        self.appLock = appLock
     }
 
     public var body: some View {
@@ -202,7 +207,7 @@ public struct HomeRootView: View {
             )
             .tabItem { Label("Goals", systemImage: "target").symbolEffect(.bounce, value: selectedTab) }
             .tag(Tab.goals)
-            HomeSettingsTab(selection: selection, onSignOut: onSignOut, onReplayIntro: onReplayIntro)
+            HomeSettingsTab(selection: selection, onSignOut: onSignOut, appLock: appLock, onReplayIntro: onReplayIntro)
                 .tabItem { Label("Settings", systemImage: "gearshape.fill").symbolEffect(.bounce, value: selectedTab) }
                 .tag(Tab.settings)
         }
@@ -256,7 +261,7 @@ public struct HomeRootView: View {
                         isActive: selectedTab == .goals
                     )
                 case .settings:
-                    HomeSettingsTab(selection: selection, onSignOut: onSignOut, onReplayIntro: onReplayIntro)
+                    HomeSettingsTab(selection: selection, onSignOut: onSignOut, appLock: appLock, onReplayIntro: onReplayIntro)
                 }
             }
         }

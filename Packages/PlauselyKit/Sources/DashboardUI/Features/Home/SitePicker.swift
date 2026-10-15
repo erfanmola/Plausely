@@ -1,11 +1,16 @@
 import AnalyticsCore
 import Charts
 import SwiftUI
+#if os(iOS)
+import UIKit
+#else
+import AppKit
+#endif
 
-/// Domain monogram: frosted-glass squircle with the site initial, in the
-/// iOS 26 clear-icon spirit (monochrome, depth from the material, not
-/// from color). Offline and deterministic. Decorative; rows carry the
-/// accessible names.
+/// Domain monogram: deterministic Telegram-style gradient tile with the
+/// site initial in white. The hue derives from the domain hash, so every
+/// site keeps a stable identity across picker, menus, and settings.
+/// Decorative; rows carry the accessible names.
 struct SiteMonogram: View {
     let domain: String
 
@@ -13,14 +18,40 @@ struct SiteMonogram: View {
         Text(letter)
             .font(.headline)
             .bold()
-            .foregroundStyle(.primary)
+            .foregroundStyle(.white)
             .frame(width: 40, height: 40)
-            .glassTile(cornerRadius: 12)
+            .background(
+                LinearGradient(
+                    colors: [tint, tint.adjusted(hue: 0.07)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
             .accessibilityHidden(true)
     }
 
     private var letter: String {
         domain.first(where: { $0.isLetter || $0.isNumber }).map { String($0).uppercased() } ?? "•"
+    }
+
+    private var tint: Color {
+        let hash = abs(domain.lowercased().hashValue % 360)
+        return Color(hue: Double(hash) / 360, saturation: 0.58, brightness: 0.88)
+    }
+}
+
+private extension Color {
+    /// Hue-shifted copy for two-stop avatar gradients.
+    func adjusted(hue delta: Double) -> Color {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if os(iOS)
+        UIColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: Double(h + CGFloat(delta)).truncatingRemainder(dividingBy: 1), saturation: Double(s), brightness: Double(b))
+        #else
+        NSColor(self).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        return Color(hue: Double(h + CGFloat(delta)).truncatingRemainder(dividingBy: 1), saturation: Double(s), brightness: Double(b))
+        #endif
     }
 }
 
@@ -91,10 +122,13 @@ struct SiteRowView: View {
         if let preview {
             MiniSparkline(series: preview)
                 .frame(height: 30)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .padding(.horizontal, 52)
         } else {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(.secondary.opacity(0.1))
                 .frame(height: 30)
+                .padding(.horizontal, 52)
                 .accessibilityHidden(true)
         }
     }

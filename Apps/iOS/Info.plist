@@ -20,6 +20,8 @@
 	<string>0.2.0</string>
 	<key>CFBundleVersion</key>
 	<string>2</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Unlock Plausely quickly and securely with Face ID.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
