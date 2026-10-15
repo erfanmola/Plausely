@@ -2,9 +2,9 @@ import AnalyticsCore
 import SwiftUI
 
 /// Consistent rendering of every report state: idle/loading/empty/value/
-/// error/unsupported. A stale envelope stays visible beneath loading and
-/// failed states with an explicit stale marker; retry is always offered on
-/// failure. Accessibility identifiers are stable for UI tests.
+/// error/unsupported. Loading always reads as shimmer into fresh data;
+/// failed refreshes keep the last good value above the error. Retry is
+/// always offered on failure. Accessibility identifiers are stable.
 public struct ReportStateView<Value: Sendable, Content: View, Skeleton: View>: View {
     private let state: ReportLoadState<Value>
     private let onRetry: () -> Void
@@ -29,17 +29,12 @@ public struct ReportStateView<Value: Sendable, Content: View, Skeleton: View>: V
             case .idle:
                 ProgressView()
                     .accessibilityIdentifier("report-idle")
-            case .loading(let stale):
-                VStack {
-                    // Skeleton approximates loaded height so surfaces
-                    // don't collapse and jump while reports reload.
-                    skeleton()
-                        .accessibilityIdentifier("report-loading")
-                    if let stale {
-                        staleBadge
-                        content(stale)
-                    }
-                }
+            case .loading:
+                // Skeleton only, even when a stale envelope exists: the
+                // refresh reads as shimmer into fresh data, never old data
+                // wearing a badge.
+                skeleton()
+                    .accessibilityIdentifier("report-loading")
             case .loaded(let envelope):
                 content(envelope)
                     .accessibilityIdentifier("report-value")
@@ -53,7 +48,6 @@ public struct ReportStateView<Value: Sendable, Content: View, Skeleton: View>: V
             case .failed(let error, let stale):
                 VStack {
                     if let stale {
-                        staleBadge
                         content(stale)
                     }
                     ContentUnavailableView {
@@ -76,16 +70,6 @@ public struct ReportStateView<Value: Sendable, Content: View, Skeleton: View>: V
                 .accessibilityIdentifier("report-unsupported")
             }
         }
-    }
-
-    private var staleBadge: some View {
-        Label("Showing last loaded data", systemImage: "arrow.clockwise")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(.quaternary, in: Capsule(style: .continuous))
-            .accessibilityIdentifier("report-stale")
     }
 }
 
