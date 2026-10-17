@@ -110,9 +110,13 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
         let items = try Self.queryItems(for: query, today: today)
         let data = try await authed(domain: query.siteID.domain, endpoint: "top-stats", account: query.accountID, items: items)
         let dto = try JSONDecoder().decode(TopStatsDTO.self, from: data)
-        let stats = try dto.topStats.map { stat -> TopStat in
-            TopStat(
-                metric: try Self.metricID(for: stat.graphMetric),
+        // Unknown future metrics (e.g. new EE stats) are skipped, never
+        // fatal: one unfamiliar `graph_metric` must not erase the whole
+        // headline row. Breakdowns follow the same additive-tolerance rule.
+        let stats: [TopStat] = try dto.topStats.compactMap { stat in
+            guard let metric = try? Self.metricID(for: stat.graphMetric) else { return nil }
+            return try TopStat(
+                metric: metric,
                 name: stat.name,
                 value: try stat.value.metricValue(),
                 comparisonValue: try stat.comparisonValue?.metricValue(),
@@ -220,15 +224,36 @@ public struct CE321DashboardAdapter: DashboardService, Sendable {
     }
 
     public func currentVisitors(account: AccountID, site: SiteID) async throws -> CurrentVisitors {
-        let request = try await requestFor(
-            domain: site.domain, path: "api/stats/\(site.domain)/current-visitors",
-            account: account, items: []
-        )
-        let (data, _) = try await transport.send(request)
-        guard let count = try? JSONDecoder().decode(Int.self, from: data) else {
-            throw ClientError.serverError(status: -1)
+        let data = try await authed(domain: site.domain, endpoint: "current-visitors", account: account, items: [])
+        return CurrentVisitors(count: try Self.parseCurrentVisitors(data))
+    }
+
+    /// Tolerant headcount decode. Stock CE answers bare JSON integers
+    /// (`5`), but real instances vary by version/proxy: quoted numbers,
+    /// padded whitespace/newlines, or `text/plain` bodies. Anything
+    /// unrecognised stays a typed server error, never a guessed zero.
+    static func parseCurrentVisitors(_ data: Data) throws -> Int {
+        if let count = try? JSONDecoder().decode(Int.self, from: data) {
+            return count
         }
-        return CurrentVisitors(count: count)
+        let trimmed = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !trimmed.isEmpty, let count = Int(trimmed) {
+            return count
+        }
+        if let quoted = try? JSONDecoder().decode(String.self, from: data),
+           let count = Int(quoted.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return count
+        }
+        if let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            for key in ["visitors", "current_visitors", "count", "value"] {
+                if let number = object[key] as? Int { return number }
+                if let number = object[key] as? NSNumber { return number.intValue }
+                if let text = object[key] as? String, let number = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    return number
+                }
+            }
+        }
+        throw ClientError.serverError(status: -1)
     }
 
     public func export(_ query: DashboardQuery, today: Date) async throws -> DashboardExport {

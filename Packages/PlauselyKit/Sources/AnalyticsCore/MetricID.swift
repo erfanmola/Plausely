@@ -23,6 +23,8 @@ public enum MetricID: String, Hashable, Codable, Sendable, CaseIterable {
     case impressions
     case ctr
     case position
+    case totalRevenue = "total_revenue"
+    case averageRevenue = "average_revenue"
 
     public struct Descriptor: Equatable, Sendable {
         /// Display name shown in metric pickers (sentence case, no values).
@@ -83,6 +85,12 @@ public enum MetricID: String, Hashable, Codable, Sendable, CaseIterable {
             return Descriptor(displayName: "CTR", unit: .percent, additive: false)
         case .position:
             return Descriptor(displayName: "Position", unit: .ratio, additive: false)
+        case .totalRevenue:
+            // Server values are plain numbers (no currency code in the
+            // top-stats payload), so this renders as a decimal amount.
+            return Descriptor(displayName: "Total revenue", unit: .ratio, additive: true)
+        case .averageRevenue:
+            return Descriptor(displayName: "Average revenue", unit: .ratio, additive: false)
         }
     }
 }

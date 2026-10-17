@@ -6,6 +6,8 @@ import SwiftUI
 /// transport shapes.
 public struct QueryToolbarView: View {
     @Bindable private var model: QueryModel
+    @State private var showingDayPicker = false
+    @State private var showingRangePicker = false
 
     public init(model: QueryModel) {
         self.model = model
@@ -22,6 +24,9 @@ public struct QueryToolbarView: View {
                 }
             }
             .accessibilityIdentifier("query-toolbar")
+            if model.period == .day {
+                dayEditor
+            }
             if case .custom = model.period {
                 customRangeEditors
             }
@@ -48,20 +53,25 @@ public struct QueryToolbarView: View {
             periodButton("Realtime", period: .realtime)
             periodButton("Today", period: .day)
             Button("Yesterday") { model.setYesterday() }
+            Button("Pick a day…") { showingDayPicker = true }
+            Button("Pick a range…") { showingRangePicker = true }
             periodButton("Last 7 days", period: .days7)
-            periodButton("Last 28 days", period: .days28)
             periodButton("Last 30 days", period: .days30)
-            periodButton("Last 91 days", period: .days91)
             periodButton("Month to date", period: .month)
             periodButton("Year to date", period: .year)
             periodButton("Last 6 months", period: .months6)
             periodButton("Last 12 months", period: .months12)
             periodButton("All time", period: .all)
-            Button("Custom range") { model.setPeriod(customDefault()) }
         } label: {
             Label(periodName, systemImage: "calendar")
         }
         .accessibilityIdentifier("period-picker")
+        .sheet(isPresented: $showingDayPicker) {
+            DayPickerSheet(model: model)
+        }
+        .sheet(isPresented: $showingRangePicker) {
+            RangePickerSheet(model: model)
+        }
     }
 
     private func periodButton(_ title: String, period: Period) -> some View {
@@ -69,35 +79,29 @@ public struct QueryToolbarView: View {
     }
 
     private var periodName: String {
-        switch model.period {
-        case .realtime: return "Realtime"
-        case .day:
-            if model.periodDate == nil { return "Today" }
-            return "Yesterday"
-        case .days7: return "Last 7 days"
-        case .days28: return "Last 28 days"
-        case .days30: return "Last 30 days"
-        case .days91: return "Last 91 days"
-        case .month: return "Month to date"
-        case .year: return "Year to date"
-        case .months6: return "Last 6 months"
-        case .months12: return "Last 12 months"
-        case .all: return "All time"
-        case .custom: return "Custom"
-        }
+        PeriodLabel.name(period: model.period, periodDate: model.periodDate, timeZone: model.base.timeZone)
     }
 
-    private func customDefault() -> Period {
-        let today = SiteDateRules.startOfDay(Date(), in: model.base.timeZone)
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = model.base.timeZone
-        let from = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        return .custom(from: from, to: today)
+    private var dayEditor: some View {
+        DatePicker(
+            "Day",
+            selection: Binding(
+                get: { model.periodDate ?? SiteDateRules.startOfDay(Date(), in: model.base.timeZone) },
+                set: { model.setDay($0) }
+            ),
+            in: ...SiteDateRules.startOfDay(Date(), in: model.base.timeZone),
+            displayedComponents: .date
+        )
+        .accessibilityIdentifier("period-day")
     }
 
     private var customRangeEditors: some View {
         Group {
             if case .custom(let from, let to) = model.period {
+                Text(PeriodLabel.name(period: model.period, periodDate: model.periodDate, timeZone: model.base.timeZone))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("period-range-label")
                 DatePicker("From", selection: customBinding(from: from, to: to, isFrom: true), displayedComponents: .date)
                     .accessibilityIdentifier("period-from")
                 DatePicker("To", selection: customBinding(from: from, to: to, isFrom: false), displayedComponents: .date)
@@ -113,7 +117,7 @@ public struct QueryToolbarView: View {
         Binding(
             get: { isFrom ? from : to },
             set: { newValue in
-                model.setPeriod(.custom(from: isFrom ? newValue : from, to: isFrom ? to : newValue))
+                model.setCustomRange(from: isFrom ? newValue : from, to: isFrom ? to : newValue)
             }
         )
     }

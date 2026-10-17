@@ -627,16 +627,22 @@ struct LiveRootView: View {
                 AppLockGate(model: appLock) {
                     HomeRootView(
                         directory: directory,
-                    overviewLoader: { [hub] query, today in try await hub.overview(query, today: today) },
-                    seriesLoader: { [hub] query, today in try await hub.series(query, today: today) },
-                    breakdownLoader: { [hub] request, today in try await hub.breakdown(request, today: today) },
+                    overviewLoader: { [hub] query, today in
+                        do { return try await hub.overview(query, today: today) } catch { throw reportError(error) }
+                    },
+                    seriesLoader: { [hub] query, today in
+                        do { return try await hub.series(query, today: today) } catch { throw reportError(error) }
+                    },
+                    breakdownLoader: { [hub] request, today in
+                        do { return try await hub.breakdown(request, today: today) } catch { throw reportError(error) }
+                    },
                     suggestions: { [hub] request, today in
                         let results = try await hub.suggestions(request, today: today)
                         return results.map { Suggestion(label: $0.label, value: $0.value) }
                     },
                     segmentList: nil,
                     realtimeLoader: { [hub] account, site in
-                        try await hub.currentVisitors(accountID: account, domain: site.domain)
+                        do { return try await hub.currentVisitors(accountID: account, domain: site.domain) } catch { throw reportError(error) }
                     },
                     onSignOut: { account in
                         try await hub.signOut(account.id)
@@ -722,6 +728,38 @@ struct LiveRootView: View {
             showingSignOutError = true
         }
     }
+}
+
+/// Maps loader failures to human report errors. `LiveError` passes through
+/// untouched (it already carries localized descriptions); `ClientError`
+/// becomes a precise `ReportLoadError` so raw dumps like
+/// `serverError(status: -1)` never reach the screen. Anything else falls
+/// back to the shared wrapper.
+private func reportError(_ error: Error) -> Error {
+    if error is LiveError || error is ReportLoadError { return error }
+    if let client = error as? ClientError {
+        switch client {
+        case .loginRequired:
+            return ReportLoadError(message: "Sign-in expired. Sign in again to keep loading reports.", kind: .authentication)
+        case .siteUnavailable:
+            return ReportLoadError(message: "That site isn't available on this instance.", kind: .server)
+        case .badRequest(let message):
+            return ReportLoadError(
+                message: message.isEmpty ? "The server rejected the request." : message, kind: .server
+            )
+        case .unprocessable(let code):
+            return ReportLoadError(
+                message: code.isEmpty ? "The server couldn't process the request." : code, kind: .server
+            )
+        case .rateLimited:
+            return ReportLoadError(message: "The server is rate-limiting requests. Try again shortly.", kind: .network)
+        case .cancelled:
+            return ReportLoadError(message: "The request was cancelled.", kind: .unknown)
+        default:
+            return ReportLoadError(message: "The server couldn't be reached. Try again.", kind: .network)
+        }
+    }
+    return ReportLoadError.wrap(error)
 }
 
 private func corrected(_ query: DashboardQuery, hub: LiveHub) async -> DashboardQuery {

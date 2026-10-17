@@ -39,7 +39,14 @@ public struct ReportLoadError: Error, Hashable, Sendable {
                 return ReportLoadError(message: "The request failed before reaching the server.", kind: .network)
             }
         }
-        return ReportLoadError(message: String(describing: error), kind: .unknown)
+        if let localized = error as? LocalizedError, let description = localized.errorDescription {
+            return ReportLoadError(message: description, kind: .unknown)
+        }
+        // Unknown error types (e.g. transport-layer failures, which stay
+        // outside this dependency-free module) read as a human sentence,
+        // never a raw dump like `serverError(status: -1)`. Live loaders map
+        // known failures to precise messages before throwing.
+        return ReportLoadError(message: "The server response couldn't be read.", kind: .server)
     }
 }
 

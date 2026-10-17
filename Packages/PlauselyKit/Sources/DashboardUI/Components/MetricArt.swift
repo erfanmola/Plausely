@@ -25,6 +25,7 @@ func metricSymbolName(for metric: MetricID) -> String {
     case .impressions: return "eye.fill"
     case .ctr: return "percent"
     case .position: return "list.number"
+    case .totalRevenue, .averageRevenue: return "dollarsign.circle.fill"
     }
 }
 

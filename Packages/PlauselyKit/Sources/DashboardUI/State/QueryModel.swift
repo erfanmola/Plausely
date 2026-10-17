@@ -130,6 +130,30 @@ public final class QueryModel {
         refresh()
     }
 
+    /// Specific calendar day in the site timezone. Today resolves to the
+    /// nil-anchored `.day` (server resolves the site-local day); any other
+    /// day anchors `.day` to that date's start.
+    public func setDay(_ date: Date, today: Date? = nil) {
+        let now = today ?? clock()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = base.timeZone
+        let day = calendar.startOfDay(for: date)
+        let todayStart = calendar.startOfDay(for: now)
+        period = .day
+        periodDate = calendar.isDate(day, inSameDayAs: todayStart) ? nil : day
+        refresh()
+    }
+
+    /// Inclusive custom range normalized to site-local day starts.
+    /// Reversed ranges are kept so validation surfaces `emptyCustomRange`
+    /// instead of silently swapping.
+    public func setCustomRange(from: Date, to: Date) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = base.timeZone
+        period = .custom(from: calendar.startOfDay(for: from), to: calendar.startOfDay(for: to))
+        refresh()
+    }
+
     // MARK: - Mutations (each revalidates)
 
     public func setPeriod(_ period: Period, date: Date? = nil) {

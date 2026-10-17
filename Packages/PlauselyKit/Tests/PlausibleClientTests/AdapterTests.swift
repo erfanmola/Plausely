@@ -118,17 +118,25 @@ struct AdapterTests {
         #expect(duck.change[.percentage] == -67)
     }
 
-    @Test("unknown graph metric fails loudly")
+    @Test("unknown graph metrics are skipped, known stats survive")
     func unknownMetric() async throws {
         let service = testStack { _ in try fixtureData("sources.day") }
         let request = BreakdownRequest(query: testQuery(), kind: .sources)
-        // sources fixture has no graph_metric; force via overview on bad payload
-        let bad = Data(#"{"meta":{"imports_included":true},"graphable_metrics":[],"top_stats":[{"name":"X","value":1,"graph_metric":"nope"}]}"#.utf8)
-        let service2 = testStack { _ in bad }
-        await #expect(throws: ClientError.self) {
-            try await service2.overview(testQuery(), today: Date())
-        }
+        // sources fixture has no graph_metric; force via overview on a
+        // mixed payload: the unknown stat drops out, the known one stays.
+        let mixed = Data(#"{"meta":{"imports_included":true},"graphable_metrics":[],"top_stats":[{"name":"X","value":1,"graph_metric":"nope"},{"name":"Unique visitors","value":5,"graph_metric":"visitors"}]}"#.utf8)
+        let service2 = testStack { _ in mixed }
+        let envelope = try await service2.overview(testQuery(), today: Date())
+        #expect(envelope.value.stats.map(\.metric) == [.visitors])
         _ = request
+    }
+
+    @Test("revenue stats decode instead of failing the overview")
+    func revenueMetrics() async throws {
+        let payload = Data(#"{"meta":{"imports_included":true},"graphable_metrics":[],"top_stats":[{"name":"Total revenue","value":120.5,"graph_metric":"total_revenue"},{"name":"Average revenue","value":10.5,"graph_metric":"average_revenue"}]}"#.utf8)
+        let service = testStack { _ in payload }
+        let envelope = try await service.overview(testQuery(), today: Date())
+        #expect(envelope.value.stats.map(\.metric) == [.totalRevenue, .averageRevenue])
     }
 
     @Test("referrer drilldown decodes URLs with engagement columns")

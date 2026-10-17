@@ -81,22 +81,23 @@ struct HomeHeaderPills: View {
 /// as the toolbar; the toolbar itself stays on macOS.
 struct HomePeriodPill: View {
     @Bindable var model: QueryModel
+    @State private var showingDayPicker = false
+    @State private var showingRangePicker = false
 
     var body: some View {
         Menu {
             Button("Realtime") { model.setPeriod(.realtime) }
             Button("Today") { model.setPeriod(.day) }
             Button("Yesterday") { model.setYesterday() }
+            Button("Pick a day…") { showingDayPicker = true }
+            Button("Pick a range…") { showingRangePicker = true }
             Button("Last 7 days") { model.setPeriod(.days7) }
-            Button("Last 28 days") { model.setPeriod(.days28) }
             Button("Last 30 days") { model.setPeriod(.days30) }
-            Button("Last 91 days") { model.setPeriod(.days91) }
             Button("Month to date") { model.setPeriod(.month) }
             Button("Year to date") { model.setPeriod(.year) }
             Button("Last 6 months") { model.setPeriod(.months6) }
             Button("Last 12 months") { model.setPeriod(.months12) }
             Button("All time") { model.setPeriod(.all) }
-            Button("Custom range") { model.setPeriod(HomePeriodPill.customDefault(for: model)) }
         } label: {
             // Fixed floor width with centered text: preset names vary
             // from "Today" to "Last 12 months" and the pill must never
@@ -119,31 +120,16 @@ struct HomePeriodPill: View {
         .menuIndicator(.hidden)
         .buttonStyle(.plain)
         .accessibilityIdentifier("home-period")
-    }
-
-    static func name(for model: QueryModel) -> String {
-        switch model.period {
-        case .realtime: return "Realtime"
-        case .day: return model.periodDate == nil ? "Today" : "Yesterday"
-        case .days7: return "Last 7 days"
-        case .days28: return "Last 28 days"
-        case .days30: return "Last 30 days"
-        case .days91: return "Last 91 days"
-        case .month: return "Month to date"
-        case .year: return "Year to date"
-        case .months6: return "Last 6 months"
-        case .months12: return "Last 12 months"
-        case .all: return "All time"
-        case .custom: return "Custom"
+        .sheet(isPresented: $showingDayPicker) {
+            DayPickerSheet(model: model)
+        }
+        .sheet(isPresented: $showingRangePicker) {
+            RangePickerSheet(model: model)
         }
     }
 
-    static func customDefault(for model: QueryModel) -> Period {
-        let today = SiteDateRules.startOfDay(Date(), in: model.base.timeZone)
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = model.base.timeZone
-        let from = calendar.date(byAdding: .day, value: -6, to: today) ?? today
-        return .custom(from: from, to: today)
+    static func name(for model: QueryModel) -> String {
+        PeriodLabel.name(period: model.period, periodDate: model.periodDate, timeZone: model.base.timeZone)
     }
 }
 
@@ -159,6 +145,9 @@ struct HomeOptionsView: View {
                     comparisonMenu
                     Toggle("Imported", isOn: importToggle)
                         .accessibilityIdentifier("import-toggle")
+                }
+                if model.period == .day {
+                    dayEditor
                 }
                 if case .custom = model.period {
                     customRangeEditors
@@ -232,13 +221,33 @@ struct HomeOptionsView: View {
         )
     }
 
+    private var dayEditor: some View {
+        DatePicker(
+            "Day",
+            selection: Binding(
+                get: { model.periodDate ?? SiteDateRules.startOfDay(Date(), in: model.base.timeZone) },
+                set: { model.setDay($0) }
+            ),
+            in: ...SiteDateRules.startOfDay(Date(), in: model.base.timeZone),
+            displayedComponents: .date
+        )
+        .accessibilityIdentifier("period-day")
+    }
+
     private var customRangeEditors: some View {
         Group {
             if case .custom(let from, let to) = model.period {
+                Text(PeriodLabel.name(period: model.period, periodDate: model.periodDate, timeZone: model.base.timeZone))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("period-range-label")
                 DatePicker("From", selection: rangeBinding(from: from, to: to, isFrom: true), displayedComponents: .date)
                     .accessibilityIdentifier("period-from")
                 DatePicker("To", selection: rangeBinding(from: from, to: to, isFrom: false), displayedComponents: .date)
                     .accessibilityIdentifier("period-to")
+                Text("Ranges are inclusive on both ends.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -246,7 +255,7 @@ struct HomeOptionsView: View {
     private func rangeBinding(from: Date, to: Date, isFrom: Bool) -> Binding<Date> {
         Binding(
             get: { isFrom ? from : to },
-            set: { model.setPeriod(.custom(from: isFrom ? $0 : from, to: isFrom ? to : $0)) }
+            set: { model.setCustomRange(from: isFrom ? $0 : from, to: isFrom ? to : $0) }
         )
     }
 

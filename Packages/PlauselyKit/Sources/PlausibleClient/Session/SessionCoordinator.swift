@@ -72,9 +72,23 @@ public actor SessionCoordinator {
     public func headers(for url: URL, account: AccountID) async throws -> [String: String] {
         let credential = try await restore(account: account)
         let cookies = credential.cookies.compactMap { $0.httpCookie() }
+        guard let host = url.host else { return [:] }
         return HTTPCookie.requestHeaderFields(with: cookies.filter {
-            $0.domain == url.host || url.host?.hasSuffix($0.domain) == true
+            Self.cookie($0, matchesHost: host)
         })
+    }
+
+    /// Domain match tolerant of leading-dot cookie domains (`.example.com`).
+    /// `HTTPCookie.domain` preserves the leading dot while `URL.host` never
+    /// has one, so a naive equality/suffix check drops valid session cookies
+    /// and realtime (or any) polling reads as logged out.
+    static func cookie(_ cookie: HTTPCookie, matchesHost host: String) -> Bool {
+        var domain = cookie.domain.lowercased()
+        if domain.hasPrefix(".") { domain = String(domain.dropFirst()) }
+        guard !domain.isEmpty else { return false }
+        let host = host.lowercased()
+        if host == domain { return true }
+        return host.hasSuffix("." + domain)
     }
 
     /// Marks the session dead after a `.loginRequired` failure so the next
