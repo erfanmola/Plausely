@@ -361,8 +361,8 @@ final class SiteShellTests: XCTestCase {
         launch()
         openDetail()
         // Headline cards render the mock top-stats aggregates in order.
-        XCTAssertTrue(element("overview-stat-visitors").waitForExistence(timeout: 15))
-        XCTAssertTrue(element("overview-stat-bounce_rate").exists)
+        XCTAssertTrue(element("overview-value-visitors").waitForExistence(timeout: 15))
+        XCTAssertTrue(element("overview-value-bounce_rate").exists)
         // The chart exposes a stable voice label (its id is shadowed).
         XCTAssertTrue(element("Unique visitors chart, 8 buckets").waitForExistence(timeout: 15))
         // Switching the chart metric reloads the series with its own identity.

@@ -73,6 +73,28 @@ xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS \
   -configuration Debug -destination "platform=iOS Simulator,name=$SIM_NAME" \
   CODE_SIGNING_ALLOWED=NO build
 
+echo "== watchOS simulator Debug build =="
+# Companion watch app (proxied via WatchConnectivity; scheme builds the
+# watch target standalone, while the iOS builds above embed it).
+WATCH_SIM="$(xcrun simctl list devices -j | python3 -c '
+import json, sys
+found = None
+for devices in json.load(sys.stdin).get("devices", {}).values():
+    for d in devices:
+        if d.get("isAvailable", False) and "Watch" in d.get("name", ""):
+            if "Series 12" in d["name"]:
+                print(d["name"])
+                sys.exit(0)
+            found = found or d["name"]
+if found:
+    print(found)
+else:
+    print("Apple Watch Series 12 (42mm)")
+' 2>/dev/null)"
+xcodebuild -project Plausely.xcodeproj -scheme Plausely-watchOS \
+  -configuration Debug -destination "platform=watchOS Simulator,name=$WATCH_SIM" \
+  CODE_SIGNING_ALLOWED=NO build
+
 echo "== macOS UI smoke test =="
 # The macOS suite drives the real screen and steals focus, so it never
 # runs unattended: opt in with PLAUSLEY_MAC_UI=1 (CI sets it).
@@ -102,6 +124,11 @@ xcodebuild -project Plausely.xcodeproj -scheme Plausely-macOS \
 echo "== iOS simulator Release build (generic) =="
 xcodebuild -project Plausely.xcodeproj -scheme Plausely-iOS \
   -configuration Release -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO build
+
+echo "== watchOS simulator Release build (generic) =="
+xcodebuild -project Plausely.xcodeproj -scheme Plausely-watchOS \
+  -configuration Release -destination 'generic/platform=watchOS Simulator' \
   CODE_SIGNING_ALLOWED=NO build
 
 echo "ALL CHECKS PASSED"

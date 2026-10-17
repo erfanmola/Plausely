@@ -29,11 +29,22 @@
         C1B2C3D4E5F60004 /* macOS PlausibleClient */ = {isa = PBXBuildFile; productRef = C1B2C3D4E5F60022 /* PlausibleClient macOS Widget */; };
         C1B2C3D4E5F60005 /* iOS widget embed */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
         C1B2C3D4E5F60006 /* macOS widget embed */ = {isa = PBXBuildFile; fileRef = C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		D1B2C3D4E5F60013 /* WatchBridge.swift in Sources (iOS) */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60001 /* WatchBridge.swift */; };
+		D1B2C3D4E5F60014 /* WatchLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60002 /* WatchLink.swift */; };
+		D1B2C3D4E5F60015 /* WatchBridge.swift in Sources (watch) */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60001 /* WatchBridge.swift */; };
+		D1B2C3D4E5F60016 /* PlauselyWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60003 /* PlauselyWatchApp.swift */; };
+		D1B2C3D4E5F60017 /* WatchSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60004 /* WatchSessionManager.swift */; };
+		D1B2C3D4E5F60018 /* WatchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60005 /* WatchViews.swift */; };
+		D1B2C3D4E5F60019 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60009 /* Assets.xcassets */; };
+		D1B2C3D4E5F60020 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60008 /* PrivacyInfo.xcprivacy */; };
+		D1B2C3D4E5F60040 /* PlauselyWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D1B2C3D4E5F60010 /* PlauselyWatch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		E1B2C3D4E5F60002 /* ScreenshotTests.swift in Sources (macOS) */ = {isa = PBXBuildFile; fileRef = E1B2C3D4E5F60001 /* ScreenshotTests.swift (macOS) */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		C1B2C3D4E5F60050 /* Embed iOS widget extension */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (C1B2C3D4E5F60005 /* iOS widget embed */, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
 		C1B2C3D4E5F60051 /* Embed macOS widget extension */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = ""; dstSubfolderSpec = 13; files = (C1B2C3D4E5F60006 /* macOS widget embed */, ); name = "Embed App Extensions"; runOnlyForDeploymentPostprocessing = 0; };
+		D1B2C3D4E5F60041 /* Embed Watch Content */ = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16; files = (D1B2C3D4E5F60040 /* PlauselyWatch.app in Embed Watch Content */, ); name = "Embed Watch Content"; runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +64,7 @@
 		};
         C1B2C3D4E5F60007 /* iOS widget proxy */ = {isa = PBXContainerItemProxy; containerPortal = A1B2C3D4E5F60030 /* Project object */; proxyType = 1; remoteGlobalIDString = C1B2C3D4E5F60030; remoteInfo = PlauselyWidget-iOS; };
         C1B2C3D4E5F60008 /* macOS widget proxy */ = {isa = PBXContainerItemProxy; containerPortal = A1B2C3D4E5F60030 /* Project object */; proxyType = 1; remoteGlobalIDString = C1B2C3D4E5F60031; remoteInfo = PlauselyWidget-macOS; };
+		D1B2C3D4E5F60043 /* watch proxy */ = {isa = PBXContainerItemProxy; containerPortal = A1B2C3D4E5F60030 /* Project object */; proxyType = 1; remoteGlobalIDString = D1B2C3D4E5F60030; remoteInfo = Plausely-watchOS; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -83,6 +95,17 @@
         C1B2C3D4E5F60017 /* macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "macOS.entitlements"; sourceTree = "<group>"; };
         C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PlauselyWidget-iOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
         C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = PlauselyWidget-macOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1B2C3D4E5F60001 /* WatchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBridge.swift; sourceTree = "<group>"; };
+		D1B2C3D4E5F60002 /* WatchLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLink.swift; sourceTree = "<group>"; };
+		D1B2C3D4E5F60003 /* PlauselyWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlauselyWatchApp.swift; sourceTree = "<group>"; };
+		D1B2C3D4E5F60004 /* WatchSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionManager.swift; sourceTree = "<group>"; };
+		D1B2C3D4E5F60005 /* WatchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchViews.swift; sourceTree = "<group>"; };
+		D1B2C3D4E5F60006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		D1B2C3D4E5F60007 /* PlauselyWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PlauselyWatch.entitlements; sourceTree = "<group>"; };
+		D1B2C3D4E5F60008 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D1B2C3D4E5F60009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D1B2C3D4E5F60010 /* PlauselyWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PlauselyWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1B2C3D4E5F60001 /* ScreenshotTests.swift (macOS) */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +129,13 @@
 		};
         C1B2C3D4E5F60020 /* iOS widget Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60003 /* iOS PlausibleClient */, ); runOnlyForDeploymentPostprocessing = 0; };
         C1B2C3D4E5F60023 /* macOS widget Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60004 /* macOS PlausibleClient */, ); runOnlyForDeploymentPostprocessing = 0; };
+		D1B2C3D4E5F60022 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -124,9 +154,33 @@
 			children = (
 				A1B2C3D4E5F60003 /* iOS */,
 				A1B2C3D4E5F60004 /* macOS */,
+				D1B2C3D4E5F60012 /* watchOS */,
+				D1B2C3D4E5F60011 /* WatchShared */,
 				C1B2C3D4E5F60024 /* Widgets */,
 			);
 			path = Apps;
+			sourceTree = "<group>";
+		};
+		D1B2C3D4E5F60011 /* WatchShared */ = {
+			isa = PBXGroup;
+			children = (
+				D1B2C3D4E5F60001 /* WatchBridge.swift */,
+			);
+			path = WatchShared;
+			sourceTree = "<group>";
+		};
+		D1B2C3D4E5F60012 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				D1B2C3D4E5F60003 /* PlauselyWatchApp.swift */,
+				D1B2C3D4E5F60004 /* WatchSessionManager.swift */,
+				D1B2C3D4E5F60005 /* WatchViews.swift */,
+				D1B2C3D4E5F60009 /* Assets.xcassets */,
+				D1B2C3D4E5F60008 /* PrivacyInfo.xcprivacy */,
+				D1B2C3D4E5F60006 /* Info.plist */,
+				D1B2C3D4E5F60007 /* PlauselyWatch.entitlements */,
+			);
+			path = watchOS;
 			sourceTree = "<group>";
 		};
 		C1B2C3D4E5F60024 /* Widgets */ = {isa = PBXGroup; children = (C1B2C3D4E5F60011 /* PlauselyWidget.swift */, C1B2C3D4E5F60014 /* iOS-Info.plist */, C1B2C3D4E5F60015 /* macOS-Info.plist */, C1B2C3D4E5F60016 /* iOS.entitlements */, C1B2C3D4E5F60017 /* macOS.entitlements */, ); path = Widgets; sourceTree = "<group>"; };
@@ -135,6 +189,7 @@
 			children = (
 				A1B2C3D4E5F60010 /* PlauselyApp.swift */,
 				B1B2C3D4E5F60082 /* LiveWiring.swift */,
+				D1B2C3D4E5F60002 /* WatchLink.swift */,
 				B1B2C3D4E5F60090 /* Assets.xcassets */,
 				B1B2C3D4E5F60098 /* PrivacyInfo.xcprivacy */,
 				A1B2C3D4E5F60011 /* Info.plist */,
@@ -162,6 +217,7 @@
 				A1B2C3D4E5F60016 /* Plausely.app */,
 				C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */,
 				C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */,
+				D1B2C3D4E5F60010 /* PlauselyWatch.app */,
 				A1B2C3D4E5F60064 /* PlauselyiOSUITests.xctest */,
 				A1B2C3D4E5F60065 /* PlauselyMacOSUITests.xctest */,
 			);
@@ -198,6 +254,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60062 /* SmokeTests.swift */,
+				E1B2C3D4E5F60001 /* ScreenshotTests.swift (macOS) */,
 				A1B2C3D4E5F60063 /* Info.plist */,
 			);
 			path = PlauselyMacOSUITests;
@@ -214,6 +271,7 @@
 				A1B2C3D4E5F60032 /* Frameworks */,
 				B1B2C3D4E5F60094 /* Resources */,
 				C1B2C3D4E5F60050 /* Embed App Extensions */,
+				D1B2C3D4E5F60041 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
@@ -221,6 +279,7 @@
 				A1B2C3D4E5F60047 /* PBXTargetDependency */,
 				B1B2C3D4E5F60085 /* PBXTargetDependency */,
 				C1B2C3D4E5F60060 /* iOS widget dependency */,
+				D1B2C3D4E5F60042 /* watch dependency */,
 			);
 			name = "Plausely-iOS";
 			packageProductDependencies = (
@@ -290,6 +349,22 @@
 		};
 		C1B2C3D4E5F60030 /* PlauselyWidget-iOS */ = {isa = PBXNativeTarget; buildConfigurationList = C1B2C3D4E5F60062 /* iOS widget configs */; buildPhases = (C1B2C3D4E5F60040 /* iOS widget Sources */, C1B2C3D4E5F60020 /* iOS widget Frameworks */, ); buildRules = (); dependencies = (); name = "PlauselyWidget-iOS"; packageProductDependencies = (C1B2C3D4E5F60021 /* PlausibleClient iOS Widget */, ); productName = PlauselyWidget; productReference = C1B2C3D4E5F60018 /* PlauselyWidget-iOS.appex */; productType = "com.apple.product-type.app-extension"; };
 		C1B2C3D4E5F60031 /* PlauselyWidget-macOS */ = {isa = PBXNativeTarget; buildConfigurationList = C1B2C3D4E5F60063 /* macOS widget configs */; buildPhases = (C1B2C3D4E5F60042 /* macOS widget Sources */, C1B2C3D4E5F60023 /* macOS widget Frameworks */, ); buildRules = (); dependencies = (); name = "PlauselyWidget-macOS"; packageProductDependencies = (C1B2C3D4E5F60022 /* PlausibleClient macOS Widget */, ); productName = PlauselyWidget; productReference = C1B2C3D4E5F60019 /* PlauselyWidget-macOS.appex */; productType = "com.apple.product-type.app-extension"; };
+		D1B2C3D4E5F60030 /* Plausely-watchOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1B2C3D4E5F60033 /* Build configuration list for PBXNativeTarget "Plausely-watchOS" */;
+			buildPhases = (
+				D1B2C3D4E5F60021 /* Sources */,
+				D1B2C3D4E5F60023 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Plausely-watchOS";
+			productName = PlauselyWatch;
+			productReference = D1B2C3D4E5F60010 /* PlauselyWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -316,6 +391,7 @@
 			targets = (
 				A1B2C3D4E5F60020 /* Plausely-iOS */,
 				A1B2C3D4E5F60021 /* Plausely-macOS */,
+				D1B2C3D4E5F60030 /* Plausely-watchOS */,
 				A1B2C3D4E5F60069 /* PlauselyiOSUITests */,
 				A1B2C3D4E5F6006A /* PlauselyMacOSUITests */,
 				C1B2C3D4E5F60030 /* PlauselyWidget-iOS */,
@@ -345,6 +421,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1B2C3D4E5F60023 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1B2C3D4E5F60019 /* Assets.xcassets in Resources */,
+				D1B2C3D4E5F60020 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -354,6 +439,8 @@
 			files = (
 				A1B2C3D4E5F60040 /* PlauselyApp.swift in Sources */,
 				B1B2C3D4E5F60080 /* LiveWiring.swift in Sources */,
+				D1B2C3D4E5F60013 /* WatchBridge.swift in Sources (iOS) */,
+				D1B2C3D4E5F60014 /* WatchLink.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -381,11 +468,23 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6006E /* SmokeTests.swift in Sources */,
+				E1B2C3D4E5F60002 /* ScreenshotTests.swift in Sources (macOS) */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C1B2C3D4E5F60040 /* iOS widget Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60001 /* PlauselyWidget iOS source */, ); runOnlyForDeploymentPostprocessing = 0; };
 		C1B2C3D4E5F60042 /* macOS widget Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1B2C3D4E5F60002 /* PlauselyWidget macOS source */, ); runOnlyForDeploymentPostprocessing = 0; };
+		D1B2C3D4E5F60021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1B2C3D4E5F60015 /* WatchBridge.swift in Sources (watch) */,
+				D1B2C3D4E5F60016 /* PlauselyWatchApp.swift in Sources */,
+				D1B2C3D4E5F60017 /* WatchSessionManager.swift in Sources */,
+				D1B2C3D4E5F60018 /* WatchViews.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -417,6 +516,7 @@
 		};
 		C1B2C3D4E5F60060 /* iOS widget dependency */ = {isa = PBXTargetDependency; target = C1B2C3D4E5F60030 /* PlauselyWidget-iOS */; targetProxy = C1B2C3D4E5F60007 /* iOS widget proxy */; };
 		C1B2C3D4E5F60061 /* macOS widget dependency */ = {isa = PBXTargetDependency; target = C1B2C3D4E5F60031 /* PlauselyWidget-macOS */; targetProxy = C1B2C3D4E5F60008 /* macOS widget proxy */; };
+		D1B2C3D4E5F60042 /* watch dependency */ = {isa = PBXTargetDependency; target = D1B2C3D4E5F60030 /* Plausely-watchOS */; targetProxy = D1B2C3D4E5F60043 /* watch proxy */; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -627,6 +727,52 @@
 		C1B2C3D4E5F60065 /* Widget iOS Release */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/iOS.entitlements; CODE_SIGN_STYLE = Automatic; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/iOS-Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = iphoneos; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; TARGETED_DEVICE_FAMILY = "1,2"; }; name = Release; };
 		C1B2C3D4E5F60066 /* Widget macOS Debug */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/macOS.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/macOS-Info.plist; MACOSX_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = macosx; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Debug; };
 		C1B2C3D4E5F60067 /* Widget macOS Release */ = {isa = XCBuildConfiguration; buildSettings = {APPLICATION_EXTENSION_API_ONLY = YES; CODE_SIGN_ENTITLEMENTS = Apps/Widgets/macOS.entitlements; CODE_SIGN_STYLE = Automatic; COMBINE_HIDPI_IMAGES = YES; DEVELOPMENT_TEAM = CY772VBW44; INFOPLIST_FILE = Apps/Widgets/macOS-Info.plist; MACOSX_DEPLOYMENT_TARGET = 14.0; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks", ); PRODUCT_BUNDLE_IDENTIFIER = ir.developex.PlauselyMac.Widget; PRODUCT_NAME = PlauselyWidget; SDKROOT = macosx; SKIP_INSTALL = YES; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 6.0; }; name = Release; };
+		D1B2C3D4E5F60031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/watchOS/PlauselyWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = CY772VBW44;
+				INFOPLIST_FILE = Apps/watchOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely.watchapp;
+				PRODUCT_NAME = PlauselyWatch;
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Debug;
+		};
+		D1B2C3D4E5F60032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/watchOS/PlauselyWatch.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = CY772VBW44;
+				INFOPLIST_FILE = Apps/watchOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ir.developex.Plausely.watchapp;
+				PRODUCT_NAME = PlauselyWatch;
+				SDKROOT = watchos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -677,6 +823,15 @@
 		};
 		C1B2C3D4E5F60062 /* iOS widget configs */ = {isa = XCConfigurationList; buildConfigurations = (C1B2C3D4E5F60064 /* Widget iOS Debug */, C1B2C3D4E5F60065 /* Widget iOS Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		C1B2C3D4E5F60063 /* macOS widget configs */ = {isa = XCConfigurationList; buildConfigurations = (C1B2C3D4E5F60066 /* Widget macOS Debug */, C1B2C3D4E5F60067 /* Widget macOS Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		D1B2C3D4E5F60033 /* Build configuration list for PBXNativeTarget "Plausely-watchOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1B2C3D4E5F60031 /* Debug */,
+				D1B2C3D4E5F60032 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */

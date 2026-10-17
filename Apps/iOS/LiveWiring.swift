@@ -594,6 +594,7 @@ struct LiveRootView: View {
     @State private var showingIntro = false
     @State private var appLock = AppLockModel()
     @State private var appearance = AppAppearance.shared
+    @State private var watchLink: WatchLinkResponder?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -692,7 +693,14 @@ struct LiveRootView: View {
         }
         .tint(appearance.accent.top)
         .preferredColorScheme(appearance.theme.scheme)
-        .task { await refreshAccounts() }
+        .task {
+            if watchLink == nil {
+                let link = WatchLinkResponder(hub: hub)
+                link.activate()
+                watchLink = link
+            }
+            await refreshAccounts()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 appLock.lock()
