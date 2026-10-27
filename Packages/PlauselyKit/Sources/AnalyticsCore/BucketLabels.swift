@@ -33,11 +33,11 @@ public enum BucketLabels {
                 if intraday {
                     return make(format: "HH:mm", timeZone: timeZone).string(from: date)
                 }
-                return make(format: "EEE", timeZone: timeZone).string(from: date)
+                return make(format: "EEE d MMM", timeZone: timeZone).string(from: date)
             }
         }
         if let date = make(format: "yyyy-MM-dd", timeZone: timeZone, posix: true).date(from: text) {
-            return make(format: "EEE", timeZone: timeZone).string(from: date)
+            return make(format: "EEE d MMM", timeZone: timeZone).string(from: date)
         }
         return raw
     }
